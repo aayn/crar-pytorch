@@ -1,4 +1,4 @@
 # yarl
 Yet Another RL Library
 
-> Note: This library is not even in alpha stage, is under development.
+> Note: This library is not in pre-alpha stage, and is under development.
