@@ -6,20 +6,18 @@ import torch.nn as nn
 from itertools import accumulate
 
 
-class Transition(nn.Module):
+class RewardPredictor(nn.Module):
     def __init__(self, abstract_state_dim):
         super().__init__()
 
         self.fc = nn.Sequential(
             nn.Linear(abstract_state_dim + 1, 10),
             nn.Tanh(),
-            nn.Linear(10, 30),
+            nn.Linear(10, 50),
             nn.Tanh(),
-            nn.Linear(30, 30),
+            nn.Linear(50, 20),
             nn.Tanh(),
-            nn.Linear(30, 10),
-            nn.Tanh(),
-            nn.Linear(10, abstract_state_dim),
+            nn.Linear(20, 1),
         )
 
     def forward(self, x):

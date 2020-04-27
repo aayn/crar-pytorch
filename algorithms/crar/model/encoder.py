@@ -45,8 +45,9 @@ class Encoder(nn.Module):
 class SimpleEncoder(nn.Module):
     """Encoder for the CartPole-v0 environment for rapid testing."""
 
-    def __init__(self, input_shape, abstract_state_dim=3):
+    def __init__(self, input_shape, device, abstract_state_dim=3):
         super().__init__()
+        self.device = device
 
         self.fc = nn.Sequential(
             nn.Linear(input_shape[0], 20),
@@ -57,5 +58,5 @@ class SimpleEncoder(nn.Module):
         )
 
     def forward(self, x):
-        x = self.fc(x)
+        x = self.fc(torch.as_tensor(x, device=self.device).float())
         return x

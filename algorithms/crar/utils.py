@@ -7,6 +7,8 @@ from itertools import accumulate
 import torch.multiprocessing as mp
 from collections import deque
 
+random.seed(4020)
+
 
 class ReplayBuffer(object):
     def __init__(self, buffer_size):
