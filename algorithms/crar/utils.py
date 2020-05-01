@@ -7,10 +7,8 @@ from itertools import accumulate
 import torch.multiprocessing as mp
 from collections import deque
 
-random.seed(4020)
 
-
-class ReplayBuffer(object):
+class ReplayBuffer:
     def __init__(self, buffer_size):
         self.buffer = deque(maxlen=buffer_size)
 
@@ -44,7 +42,9 @@ def reward_to_go(rewards):
     return rtg
 
 
-def synchronize_target_model(
-    current_model: torch.nn.Module, target_model: torch.nn.Module
-):
-    target_model.load_state_dict(current_model.state_dict())
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__

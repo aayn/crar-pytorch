@@ -1,0 +1,16 @@
+key,value
+env,CartPole-v0
+batch_size,16
+lr,0.01
+gamma,0.99
+sync_rate,20
+replay_size,1000
+warm_start_size,1000
+eps_last_frame,200
+eps_start,1.0
+eps_end,0.01
+episode_length,200
+max_episode_reward,200
+warm_start_steps,200
+is_atari,False
+logger_dir,cartpole_lightning

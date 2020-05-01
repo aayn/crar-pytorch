@@ -133,3 +133,6 @@ dmypy.json
 
 # Weights and biases
 wandb/
+
+# Log files and directories
+*logs

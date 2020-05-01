@@ -1,0 +1,33 @@
+# Dimensionality of the abstract space
+abstract-dim: &abstract-dim 3
+# Activation function to use
+activation: &activation Tanh
+# Number of actions in the current environment
+num-actions: &num-actions 2
+
+input-channels: &input-channels 3
+
+
+crar-encoder:
+  convs:
+    - Conv2d: [*input-channels, 8, 2]
+    - *activation
+    - Conv2d: [8, 16, 2]
+    - *activation
+    - MaxPool2d: [2]
+    
+  fc:
+
+crar-qnet-with-abstract: &cqwa
+  - Linear: [*abstract-dim, 20]
+  - *activation
+  - Linear: [20, 50]
+  - *activation
+  - Linear: [50, *num-actions]
+
+
+
+
+agent:
+  encoder:
+  q-network: *cqwa

@@ -7,9 +7,9 @@ from itertools import accumulate
 
 
 class TransitionPredictor(nn.Module):
-    def __init__(self, abstract_state_dim, device):
+    def __init__(self, abstract_state_dim):
         super().__init__()
-        self.device = device
+        # self.device = device
 
         self.fc = nn.Sequential(
             nn.Linear(abstract_state_dim + 1, 10),

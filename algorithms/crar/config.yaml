@@ -1,2 +1,36 @@
-actor-mlp:
+CartPole-v0:
+  env: CartPole-v0
+  max_epochs: 200
+  batch_size: 32
+  abstract_state_dim: 2
+  qnet_lr: !!python/float 5e-4
+  encoder_lr: !!python/float 5e-4
+  gamma: 0.99
+  sync_rate: 10
+  replay_size: 1000
+  warm_start_size: 1000
+  eps_last_frame: 1000
+  eps_start: 1.0
+  eps_end: 0.01
+  episode_length: 200
+  max_episode_reward: 200
+  is_atari: False
+  logger_dir: cartpole_lightning
 
+PongNoFrameskip-v4:
+  env: PongNoFrameskip-v4
+  max_epochs: 50000
+  batch_size: 32
+  abstract_state_dim: 100
+  lr: !!python/float 1e-4
+  gamma: 0.99
+  sync_rate: 1000
+  replay_size: 10000
+  warm_start_size: 10000
+  eps_last_frame: 50000
+  eps_start: 1.0
+  eps_end: 0.01
+  episode_length: 5000
+  max_episode_reward: 21
+  is_atari: True
+  logger_dir: pong_lightning

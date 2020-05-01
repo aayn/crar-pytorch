@@ -1,5 +1,4 @@
 import abc
-import random
 import numpy as np
 import torch
 import torch.nn as nn
@@ -58,27 +57,27 @@ class QNetwork(nn.Module, QLearner):
         return self(state)
 
     def act(self, state, epsilon):
-        if random.random() > epsilon:
+        if np.random.random() > epsilon:
             state = torch.tensor(state, device=self.device).unsqueeze(0)
             q_value = self(state)
             action = torch.argmax(q_value).item()
         else:
-            action = random.randrange(self.num_actions)
+            action = np.random.randint(self.num_actions)
         return action
 
 
 class SimpleQNetwork(nn.Module, QLearner):
-    def __init__(self, input_shape, num_actions, device):
+    def __init__(self, input_shape, num_actions, device, act):
         super().__init__()
         self.input_shape = input_shape
         self.num_actions = num_actions
         self.device = device
 
         self.fc = nn.Sequential(
-            nn.Linear(input_shape[0], 128),
-            nn.Tanh(),
+            nn.Linear(input_shape, 128),
+            act(),
             nn.Linear(128, 128),
-            nn.Tanh(),
+            act(),
             nn.Linear(128, self.num_actions),
         )
 
@@ -89,11 +88,14 @@ class SimpleQNetwork(nn.Module, QLearner):
     def get_value(self, state):
         return self(state)
 
-    def act(self, state, epsilon):
-        if random.random() > epsilon:
-            state = torch.as_tensor(state, device=self.device)
-            q_value = self(state)
-            action = torch.argmax(q_value).item()
-        else:
-            action = random.randrange(self.num_actions)
+    def act(self, state):
+        # state = torch.as_tensor(state, device=self.device)
+        q_value = self(state)
+        action = torch.argmax(q_value).item()
         return action
+
+
+def synchronize_target_model(
+    current_model: torch.nn.Module, target_model: torch.nn.Module
+):
+    target_model.load_state_dict(current_model.state_dict())
