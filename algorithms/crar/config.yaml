@@ -1,20 +1,24 @@
 CartPole-v0:
   env: CartPole-v0
-  max_epochs: 200
+  max_epochs: 400
   batch_size: 32
   abstract_state_dim: 2
-  qnet_lr: !!python/float 5e-4
-  encoder_lr: !!python/float 5e-4
+  optimizer:
+    name: Adam
+    params: {lr: !!python/float 0.005}
+    # qnet_lr: !!python/float 5e-4
+    # encoder_lr: !!python/float 5e-4
   gamma: 0.99
-  sync_rate: 10
+  sync_rate: 20
   replay_size: 1000
-  warm_start_size: 1000
-  eps_last_frame: 1000
+  warm_start_size: 4000
+  eps_last_frame: 400
   eps_start: 1.0
   eps_end: 0.01
   episode_length: 200
   max_episode_reward: 200
   is_atari: False
+  is_custom: False
   logger_dir: cartpole_lightning
 
 PongNoFrameskip-v4:
@@ -22,7 +26,11 @@ PongNoFrameskip-v4:
   max_epochs: 50000
   batch_size: 32
   abstract_state_dim: 100
-  lr: !!python/float 1e-4
+  optimizer:
+    name: Adam
+    params: {lr: !!python/float 1e-4}
+    # qnet_lr: !!python/float 5e-4
+    # encoder_lr: !!python/float 5e-4
   gamma: 0.99
   sync_rate: 1000
   replay_size: 10000
@@ -33,4 +41,29 @@ PongNoFrameskip-v4:
   episode_length: 5000
   max_episode_reward: 21
   is_atari: True
+  is_custom: False
   logger_dir: pong_lightning
+
+SimpleMaze:
+  env: SimpleMaze
+  max_epochs: 50
+  batch_size: 32
+  abstract_state_dim: 2
+  optimizer:
+    name: RMSprop
+    params: {lr: !!python/float 1e-2, weight_decay: 0.9, eps: !!python/float 1e-4}
+    grad_clip_norm: 1.0
+    # qnet_lr: !!python/float 5e-4
+    # encoder_lr: !!python/float 5e-4
+  gamma: 0.99
+  sync_rate: 100 # freeze interval
+  replay_size: 1000000
+  warm_start_size: 20000
+  eps_last_frame: 1000
+  eps_start: 1.0
+  eps_end: 1.0  # Random actions
+  episode_length: 5000
+  max_episode_reward: 0
+  is_atari: False
+  is_custom: True
+  logger_dir: simple_maze_lightning

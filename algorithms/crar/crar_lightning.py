@@ -13,16 +13,23 @@ from agent import CRARAgent
 from data import ReplayBuffer, Experience, ExperienceDataset
 import numpy as np
 from box import Box
+from environments import SimpleMaze
 
 
 class CRARLightning(pl.LightningModule):
+    optimizers = {"Adam": optim.Adam, "RMSprop": optim.RMSprop}
+
     def __init__(self, hparams: Box):
         super().__init__()
         self.hparams = hparams
         if hparams.is_atari:
             self.env = wrap_pytorch(wrap_deepmind(make_atari(hparams.env)))
+        elif hparams.is_custom:
+            self.env = SimpleMaze(higher_dim_obs=True)
         else:
             self.env = gym.make(hparams.env)
+
+        self.optimizer = CRARLightning.optimizers[self.hparams.optimizer.name]
 
         self.reset()
 
@@ -42,7 +49,7 @@ class CRARLightning(pl.LightningModule):
 
         self.total_reward = 0
         self.episode_reward = 0
-        self.latest_loss = None
+        # self.latest_loss = None
         self.populate(hparams.warm_start_size)
 
     def reset(self):
@@ -71,7 +78,7 @@ class CRARLightning(pl.LightningModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.agent.get_value(x)
 
-    def mf_loss(self, encoded_batch):
+    def compute_mf_loss(self, encoded_batch):
         encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
 
         state_action_values = (
@@ -91,71 +98,114 @@ class CRARLightning(pl.LightningModule):
 
         return nn.MSELoss()(state_action_values, expected_state_action_values)
 
-    def trans_loss(self, encoded_batch):
+    def compute_trans_loss(self, encoded_batch):
         encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
         transition = self.agent.compute_transition(encoded_states, actions)
-
+        print(f"trans = {transition[0]}")
+        print(encoded_states[0])
+        print(encoded_next_states[0])
         return nn.MSELoss()(encoded_states + transition, encoded_next_states)
 
-    def representation_loss(self, encoded_batch):
+    def compute_representation_loss(self, encoded_batch):
         # TODO: Recheck representation loss
         ld1 = 0
         ld2 = 0
         Cd = 5
-        random_states_1 = self.agent.encoder(
+        # TODO: Currently doesn't deal with batches
+        encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
+
+        random_states_1 = self.agent.encode(
             torch.as_tensor(
-                self.replay_buffer.sample(len(encoded_batch))[0], device=self.device
-            )
-        )
-        random_states_2 = self.agent.encoder(
-            torch.as_tensor(
-                self.replay_buffer.sample(len(encoded_batch))[0], device=self.device
+                self.replay_buffer.sample(encoded_states.shape[0])[0],
+                device=self.device,
             )
         )
 
-        ld1 = torch.exp(-Cd * torch.norm(random_states_1 - random_states_2)) / len(
-            encoded_batch
+        random_states_2 = self.agent.encode(
+            torch.as_tensor(
+                self.replay_buffer.sample(encoded_states.shape[0])[0],
+                device=self.device,
+            )
         )
+
+        ld1 = torch.exp(-Cd * torch.norm(random_states_1 - random_states_2))
         # TODO: Try other alternatives if not mean
-        ld2 = torch.max(torch.norm(random_states_1, p=float("inf")) - 1, 0)[0].mean()
+        # ld2 = torch.max(
+        #     torch.as_tensor([(torch.norm(random_states_1, p=float("inf")) ** 2) - 1, 0])
+        # )
+        ld2 = torch.clamp(torch.max(torch.pow(random_states_1, 2)) - 1.0, 0.0, 100.0)
+        # print(ld2)
+        # ld2 = 1 / (torch.norm(random_states_1) + 1e-3)
 
         encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
         beta = 0.2
-        ld1_ = torch.exp(-Cd * torch.norm(encoded_states - encoded_next_states))
+        ld1_ = torch.exp(
+            -Cd
+            * torch.sqrt(
+                torch.clamp(
+                    torch.sum(torch.pow(encoded_states - encoded_next_states, 2)),
+                    1e-6,
+                    10,
+                )
+            )
+        )
 
         return ld1 + beta * ld1_ + ld2
 
-    def training_step(self, batch, batch_number, optimizer_idx):
+    def training_step(self, batch, batch_number, optimizer_idx=None):
+        # if optimizer_idx in (0,):
+        # print(optimizer_idx)
         states, actions, rewards, dones, next_states = batch
         encoded_batch = (
-            self.agent.encoder(states),
+            self.agent.encode(states),
             actions,
             rewards,
             dones,
-            self.agent.encoder(next_states),
+            self.agent.encode(next_states),
         )
+
+        if self.global_step % self.hparams.sync_rate == 0:
+            self.agent.synchronize_networks()
 
         reward, done = self.play_step()
         self.episode_reward += reward
-
-        mf_loss = self.mf_loss(encoded_batch)
-        trans_loss = self.trans_loss(encoded_batch)
-        representation_loss = self.representation_loss(encoded_batch)
-
-        loss = mf_loss + trans_loss + representation_loss
-
-        if self.trainer.use_dp or self.trainer.use_ddp2:
-            loss = loss.unsqueeze(0)
 
         if done:
             self.total_reward = self.episode_reward
             self.episode_reward = 0
 
-        if self.global_step % self.hparams.sync_rate == 0:
-            self.agent.synchronize_networks()
+        mf_loss = self.compute_mf_loss(encoded_batch)
+        trans_loss = self.compute_trans_loss(encoded_batch)
+        representation_loss = self.compute_representation_loss(encoded_batch)
+
+        print(f"mf loss {mf_loss}")
+        print(f"trans loss {trans_loss}")
+        print(f"repr loss {representation_loss}")
+
+        loss = mf_loss + trans_loss + representation_loss
+
+        # self.mf_loss, self.trans_loss, self.representation_loss, self.loss = (
+        #     mf_loss,
+        #     trans_loss,
+        #     representation_loss,
+        #     loss,
+        # )
+
+        # else:
+        #     mf_loss, trans_loss, representation_loss, loss = (
+        #         self.mf_loss,
+        #         self.trans_loss,
+        #         self.representation_loss,
+        #         self.loss,
+        #     )
+        # loss = trans_loss
+
+        if self.trainer.use_dp or self.trainer.use_ddp2:
+            loss = loss.unsqueeze(0)
+
         log = {
             "total_reward": torch.tensor(self.total_reward).to(self.device),
-            "reward": torch.tensor(reward).to(self.device),
+            # "reward": torch.tensor(reward).to(self.device),
             "mf_loss": mf_loss,
             "trans_loss": trans_loss,
             "train_loss": loss,
@@ -175,30 +225,52 @@ class CRARLightning(pl.LightningModule):
             }
         )
 
+    # def training_epoch_end(self, outputs):
+    #     print("Hello from training_epoch_end")
+    #     print(outputs)
+    #     return outputs
+
     def optimizer_step(
         self, current_epoch, batch_nb, optimizer, optimizer_i, second_order_closure=None
     ):
-        optimizer.step()
-        optimizer.zero_grad()
+        # print(optimizer)
+        for opt in optimizer:
+            opt.step()
+        for opt in optimizer:
+            opt.zero_grad()
 
     def configure_optimizers(self) -> List[Optimizer]:
-        """ Initialize Adam optimizer"""
-        dq_optimizer = optim.RMSprop(
-            self.agent.current_qnet.parameters(), lr=self.hparams.qnet_lr
-        )
-        encoder_optimizer = optim.RMSprop(
-            self.agent.encoder.parameters(), lr=self.hparams.qnet_lr
-        )
-        transition_optimizer = optim.RMSprop(
-            self.agent.transition_predictor.parameters(), lr=self.hparams.qnet_lr
-        )
+        """ Initialize Optimizer"""
 
-        return [dq_optimizer, encoder_optimizer, transition_optimizer]
+        dq_optimizer = self.optimizer(
+            list(self.agent.encoder.parameters())
+            + list(self.agent.current_qnet.parameters()),
+            **self.hparams.optimizer.params,
+        )
+        encoder_optimizer = self.optimizer(
+            self.agent.encoder.parameters(), **self.hparams.optimizer.params
+        )
+        transition_optimizer = self.optimizer(
+            list(self.agent.encoder.parameters())
+            + list(self.agent.transition_predictor.parameters()),
+            **self.hparams.optimizer.params,
+        )
+        # dq_optimizer = optim.RMSprop(
+        #     self.agent.current_qnet.parameters(), lr=self.hparams.qnet.lr
+        # )
+        # encoder_optimizer = optim.RMSprop(
+        #     self.agent.encoder.parameters(), lr=self.hparams.qnet_lr
+        # )
+        # transition_optimizer = optim.RMSprop(
+        #     self.agent.transition_predictor.parameters(), lr=self.hparams.qnet_lr
+        # )
+
+        return [(dq_optimizer, encoder_optimizer, transition_optimizer)]
 
     def __dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
         dataset = ExperienceDataset(self.replay_buffer, self.hparams.episode_length)
-        dataloader = DataLoader(dataset=dataset, batch_size=self.hparams.batch_size,)
+        dataloader = DataLoader(dataset=dataset, batch_size=self.hparams.batch_size)
         return dataloader
 
     def train_dataloader(self) -> DataLoader:

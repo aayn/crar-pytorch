@@ -19,7 +19,7 @@ import numpy as np
 
 class SimpleMaze(gym.Env):
     action_space = gym.spaces.Discrete(4)
-    observation_space = gym.spaces.Space((48, 48), float)
+    observation_space = gym.spaces.Space((1, 48, 48), float)
 
     def __init__(self, **kwargs):
         # super().__init__()
@@ -70,6 +70,9 @@ class SimpleMaze(gym.Env):
         self.reward = 0
         return self.observe(), self.reward, False, None
 
+    def render(self):
+        return self.observe()
+
     def observe(self):
         obs = copy.deepcopy(self._map)
 
@@ -78,7 +81,7 @@ class SimpleMaze(gym.Env):
             "self._pos_agent"
             self._pos_agent
             obs = self.get_higher_dim_obs([self._pos_agent], [self._pos_goal])
-        return obs
+        return [obs]
 
     def get_higher_dim_obs(self, indices_agent, indices_reward):
         """ Obtain the high-dimensional observation from indices of the agent position and the indices of the reward positions.

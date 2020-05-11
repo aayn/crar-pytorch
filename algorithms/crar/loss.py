@@ -5,6 +5,14 @@ from utils import ReplayBuffer
 from typing import Union
 
 
+def mean_squared_error_p(y_true, y_pred):
+    """ Modified mean square error that clips
+    """
+    return torch.clamp(
+        torch.max(torch.pow(torch.y_pred - y_true, 2), dim=-1) - 1, 0.0, 100.0
+    )
+
+
 def q_td_loss_optim(
     batch_size: int,
     gamma: float,

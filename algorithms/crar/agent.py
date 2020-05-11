@@ -75,15 +75,23 @@ class CRARAgent(nn.Module, AbstractAgent):
         self.reward_predictor = RewardPredictor(abstract_state_dim, rp_act)
         self.reward_predictor.to(self.device)
 
-        self.transition_predictor = TransitionPredictor(abstract_state_dim)
+        self.transition_predictor = TransitionPredictor(
+            abstract_state_dim, self.num_actions
+        )
         self.transition_predictor.to(device)
+        self.prev_obs = None
 
     def forward(self, x):
         self.get_value(x)
 
     def encode(self, obs):
         # print(f"Three {obs.shape}")
-        # print(obs)
+        # if self.prev_obs is not None:
+        #     try:
+        #         print(f"Obs diff = {torch.allclose(self.prev_obs, obs)}")
+        #     except RuntimeError:
+        #         pass
+        self.prev_obs = obs
         obs = torch.as_tensor(obs, device=self.device)
         return self.encoder(obs)
 
@@ -95,9 +103,10 @@ class CRARAgent(nn.Module, AbstractAgent):
 
     def compute_transition(self, encoded_state, actions):
         # encoded_state = self.encode(obs)
-        return self.transition_predictor(
-            torch.cat([encoded_state, actions.view(-1, 1).float()], 1)
-        )
+        # TODO: Decide if use one-hot or not.
+        actions = nn.functional.one_hot(actions, self.num_actions)
+        x = torch.cat([encoded_state, actions.float()], 1)
+        return self.transition_predictor(x)
 
     # @torch.no_grad()
     def act(self, obs, eps):

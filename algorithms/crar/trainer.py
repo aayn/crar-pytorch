@@ -14,12 +14,19 @@ def main(hparams):
 
     logger = TensorBoardLogger(save_dir=os.getcwd(), name=hparams.logger_dir)
 
+    grad_clip_norm = 0
+    try:
+        grad_clip_norm = hparams.optim.grad_clip_norm
+    except KeyError:
+        pass
+
     trainer = pl.Trainer(
         gpus=1,
         logger=logger,
         distributed_backend="dp",
         max_epochs=hparams.max_epochs,
         early_stop_callback=False,
+        gradient_clip_val=grad_clip_norm
         # val_check_interval=100,
         # log_gpu_memory="all",
     )
@@ -40,7 +47,7 @@ if __name__ == "__main__":
     with open("config.yaml") as f:
         config = Box(yaml.load(f, Loader=yaml.FullLoader)[args.env])
 
-    # print(config)
+    print(config)
     main(config)
 
     # parser.add_argument("--gamma", type=float, default=0.99, help="discount factor")

@@ -12,3 +12,7 @@ def timeit(f):
         return ret
 
     return wrapper
+
+
+def plot_abstract_space(test_data_set, learning_algo, *args, **kwargs):
+    pass

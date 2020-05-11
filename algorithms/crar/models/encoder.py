@@ -11,7 +11,6 @@ class Encoder(nn.Module):
         super().__init__()
         self.input_shape = input_shape
         self.device = device
-
         self.convs = nn.Sequential(
             nn.Conv2d(input_shape[0], 32, kernel_size=2),
             act(),
