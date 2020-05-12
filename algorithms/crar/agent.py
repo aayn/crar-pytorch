@@ -1,10 +1,10 @@
 from models import (
     SimpleEncoder,
-    Encoder,
-    SimpleQNetwork,
     synchronize_target_model,
     RewardPredictor,
     TransitionPredictor,
+    make_encoder,
+    make_qnet,
 )
 import torch
 import abc
@@ -54,21 +54,22 @@ class CRARAgent(nn.Module, AbstractAgent):
             )
         # Observation is an image
         else:
-            self.encoder = Encoder(
-                env.observation_space.shape, device, encoder_act, abstract_state_dim
+            self.encoder = make_encoder(
+                env.observation_space.shape, abstract_state_dim, device
             )
+            # Encoder(
+            #     env.observation_space.shape, device, encoder_act, abstract_state_dim
+            # )
 
-        self.current_qnet = SimpleQNetwork(
-            abstract_state_dim, env.action_space.n, device, qnet_act
-        )
+        self.current_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)
+        # SimpleQNetwork(abstract_state_dim, env.action_space.n, device, qnet_act)
 
         self.encoder.to(self.device)
         self.current_qnet.to(self.device)
 
         if double_learning:
-            self.target_qnet = SimpleQNetwork(
-                abstract_state_dim, env.action_space.n, device, qnet_act
-            )
+            self.target_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)
+            # SimpleQNetwork(abstract_state_dim, env.action_space.n, device, qnet_act)
             synchronize_target_model(self.current_qnet, self.target_qnet)
             self.target_qnet.to(self.device)
 

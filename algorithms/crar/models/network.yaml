@@ -1,33 +1,39 @@
-# Dimensionality of the abstract space
-abstract-dim: &abstract-dim 3
-# Activation function to use
-activation: &activation Tanh
-# Number of actions in the current environment
-num-actions: &num-actions 2
+act: &act tanh
+none: &none !!python/none None
 
-input-channels: &input-channels 3
-
-
-crar-encoder:
-  convs:
-    - Conv2d: [*input-channels, 8, 2]
-    - *activation
-    - Conv2d: [8, 16, 2]
-    - *activation
-    - MaxPool2d: [2]
-    
-  fc:
-
-crar-qnet-with-abstract: &cqwa
-  - Linear: [*abstract-dim, 20]
-  - *activation
-  - Linear: [20, 50]
-  - *activation
-  - Linear: [50, *num-actions]
+my-convs: &my-convs
+  - [Conv2d, auto, 32, {kernel_size: 2}]
+  - *act
+  - [Conv2d, 32, 64, {kernel_size: 2}]
+  - *act
+  - [Conv2d, 64, 64, {kernel_size: 3}]
+  - *act
 
 
+my-fc: &my-fc
+  - [Linear, auto, 200]
+  - *act
+  - [Linear, 200, 100]
+  - *act
+  - [Linear, 100, 50]
+  - *act
+  - [Linear, 50, 10]
+  - *act
+  - [Linear, 10, auto]
+
+simple-q-fc: &simple-q-fc
+  - [Linear, auto, 128]
+  - *act
+  - [Linear, 128, 128]
+  - *act
+  - [Linear, 128, auto]
 
 
-agent:
-  encoder:
-  q-network: *cqwa
+encoder:
+  convs: *my-convs
+  fc: *my-fc
+
+qnet:
+  convs: *none
+  fc: *simple-q-fc
+
