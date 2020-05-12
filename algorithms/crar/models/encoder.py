@@ -16,29 +16,6 @@ class Encoder(nn.Module):
         self.convs = convs
         self.fc = fc
 
-        # nn.Sequential(
-        #     nn.Conv2d(input_shape[0], 32, kernel_size=2),
-        #     act(),
-        #     nn.Conv2d(32, 64, kernel_size=2),
-        #     act(),
-        #     # nn.MaxPool2d(2),
-        #     nn.Conv2d(64, 64, kernel_size=3),
-        #     act(),
-        #     # nn.MaxPool2d(3),
-        # )
-
-        # self.fc = nn.Sequential(
-        #     nn.Linear(self.feature_size(), 200),
-        #     act(),
-        #     nn.Linear(200, 100),
-        #     act(),
-        #     nn.Linear(100, 50),
-        #     act(),
-        #     nn.Linear(50, 10),
-        #     act(),
-        #     nn.Linear(10, abstract_state_dim),
-        # )
-
     def forward(self, x):
         if self.convs is not None:
             x = self.convs(torch.as_tensor(x, device=self.device).float())

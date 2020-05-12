@@ -1,5 +1,4 @@
 from models import (
-    SimpleEncoder,
     synchronize_target_model,
     RewardPredictor,
     TransitionPredictor,
