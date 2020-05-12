@@ -5,6 +5,8 @@ from models import (
     TransitionPredictor,
     make_encoder,
     make_qnet,
+    make_transition_predictor,
+    make_reward_predictor,
 )
 import torch
 import abc
@@ -73,12 +75,18 @@ class CRARAgent(nn.Module, AbstractAgent):
             synchronize_target_model(self.current_qnet, self.target_qnet)
             self.target_qnet.to(self.device)
 
-        self.reward_predictor = RewardPredictor(abstract_state_dim, rp_act)
-        self.reward_predictor.to(self.device)
-
-        self.transition_predictor = TransitionPredictor(
+        self.reward_predictor = make_reward_predictor(
             abstract_state_dim, self.num_actions
         )
+        # RewardPredictor(abstract_state_dim, rp_act)
+        self.reward_predictor.to(self.device)
+
+        self.transition_predictor = make_transition_predictor(
+            abstract_state_dim, self.num_actions
+        )
+        # TransitionPredictor(
+        #     abstract_state_dim, self.num_actions
+        # )
         self.transition_predictor.to(device)
         self.prev_obs = None
 

@@ -28,6 +28,26 @@ simple-q-fc: &simple-q-fc
   - *act
   - [Linear, 128, auto]
 
+trans-pred-fc: &trans-pred-fc
+  - [Linear, auto, 10]
+  - *act
+  - [Linear, 10, 30]
+  - *act
+  - [Linear, 30, 30]
+  - *act
+  - [Linear, 30, 10]
+  - *act
+  - [Linear, 10, auto]
+
+reward-pred-fc: &reward-pred-fc
+  - [Linear, auto, 10]
+  - *act
+  - [Linear, 10, 50]
+  - *act
+  - [Linear, 50, 20]
+  - *act
+  - [Linear, 20, 1]
+
 
 encoder:
   convs: *my-convs
@@ -37,3 +57,8 @@ qnet:
   convs: *none
   fc: *simple-q-fc
 
+trans-pred:
+  fc: *trans-pred-fc
+
+reward-pred:
+  fc: *reward-pred-fc

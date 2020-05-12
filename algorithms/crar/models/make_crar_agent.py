@@ -3,8 +3,10 @@ import torch
 import torch.nn as nn
 from .encoder import Encoder
 from .qnet import QNetwork
+from .transition_predictor import TransitionPredictor
+from .reward_predictor import RewardPredictor
 
-NN_MAP = {"Conv2d": nn.Conv2d, "tanh": nn.Tanh, "Linear": nn.Linear}
+NN_MAP = {"Conv2d": nn.Conv2d, "tanh": nn.Tanh, "Linear": nn.Linear, "relu": nn.ReLU}
 
 
 def compute_feature_size(input_shape, convs):
@@ -25,13 +27,13 @@ def make_convs(input_shape, conv_config):
     return nn.Sequential(*convs)
 
 
-def make_fc(feature_size, out_dim, fc_config):
+def make_fc(input_dim, out_dim, fc_config):
     print(fc_config)
     fc = []
     for i, layer in enumerate(fc_config):
         if layer[0] == "Linear":
             if layer[1] == "auto":
-                fc.append(NN_MAP[layer[0]](feature_size, layer[2]))
+                fc.append(NN_MAP[layer[0]](input_dim, layer[2]))
             elif layer[2] == "auto":
                 fc.append(NN_MAP[layer[0]](layer[1], out_dim))
             else:
@@ -40,6 +42,24 @@ def make_fc(feature_size, out_dim, fc_config):
             fc.append(NN_MAP[layer]())
 
     return nn.Sequential(*fc)
+
+
+def make_transition_predictor(abstract_dim, num_actions):
+    with open("models/network.yaml") as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+    tp_config = config["trans-pred"]
+    fc = make_fc(abstract_dim + num_actions, abstract_dim, tp_config["fc"])
+    transition_predictor = TransitionPredictor(abstract_dim, num_actions, fc)
+    return transition_predictor
+
+
+def make_reward_predictor(abstract_dim, num_actions):
+    with open("models/network.yaml") as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+    rp_config = config["reward-pred"]
+    fc = make_fc(abstract_dim + num_actions, abstract_dim, rp_config["fc"])
+    reward_predictor = RewardPredictor(abstract_dim, num_actions, fc)
+    return reward_predictor
 
 
 def make_encoder(input_shape, abstract_dim, device) -> Encoder:
