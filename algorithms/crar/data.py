@@ -1,12 +1,13 @@
 # Credits: https://colab.research.google.com/drive/1F_RNcHzTfFuQf-LeKvSlud6x7jXYkG31#scrollTo=NWvMLBDySQI5
 
 from collections import namedtuple, deque
-from typing import Tuple
+from typing import Tuple, Union
 import numpy as np
 from torch.utils.data.dataset import IterableDataset
 
 Experience = namedtuple(
-    "Experience", field_names=["observation", "action", "reward", "done", "next_state"]
+    "Experience",
+    field_names=["observation", "action", "reward", "done", "next_observation"],
 )
 
 
@@ -24,7 +25,7 @@ class ReplayBuffer:
         return len(self.buffer)
 
     def push(self, experience: Experience) -> None:
-        self.buffer.append(experience)
+        self.buffer.appendleft(experience)
 
     def sample(self, batch_size: int) -> Tuple:
         indices = np.random.choice(len(self.buffer), batch_size, replace=False)
@@ -39,6 +40,15 @@ class ReplayBuffer:
             np.array(dones, dtype=np.bool),
             np.array(next_states),
         )
+
+    def most_recent(self, n: Union[None, int] = None):
+        if n is None:
+            return self.buffer[0]
+        dq_copy, vals = self.buffer.copy(), []
+        for _ in range(n):
+            vals.append(dq_copy.popleft())
+
+        return vals
 
 
 class ExperienceDataset(IterableDataset):

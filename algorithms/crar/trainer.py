@@ -10,6 +10,7 @@ from box import Box
 
 
 def main(hparams):
+    # TODO: Check that all view, reshape, transpose are used correctly
     model = CRARLightning(hparams)
 
     logger = TensorBoardLogger(save_dir=os.getcwd(), name=hparams.logger_dir)
@@ -26,7 +27,9 @@ def main(hparams):
         distributed_backend="dp",
         max_epochs=hparams.max_epochs,
         early_stop_callback=False,
-        gradient_clip_val=grad_clip_norm
+        gradient_clip_val=grad_clip_norm,
+        benchmark=True,
+        auto_lr_find=True
         # val_check_interval=100,
         # log_gpu_memory="all",
     )

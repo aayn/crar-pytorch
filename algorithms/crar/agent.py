@@ -105,6 +105,8 @@ class CRARAgent(nn.Module, AbstractAgent):
         # encoded_state = self.encode(obs)
         # TODO: Decide if use one-hot or not.
         actions = nn.functional.one_hot(actions, self.num_actions)
+        # print(actions.shape)
+        # x = torch.cat([encoded_state, actions.float().view(32, 1)], 1)
         x = torch.cat([encoded_state, actions.float()], 1)
         return self.transition_predictor(x)
 

@@ -118,3 +118,20 @@ class SimpleMaze(gym.Env):
         # plt.imshow(obs, cmap='gray_r')
         # plt.show()
         return obs
+
+    def all_possible_inputs(self):
+        all_possib_inp = []
+        self.create_map()
+        for y_a in range(self._size_maze):
+            for x_a in range(self._size_maze):
+                state = copy.deepcopy(self._map)
+                state[self._size_maze // 2, self._size_maze // 2] = 0
+                if state[x_a, y_a] == 0:
+                    if self._higher_dim_obs is True:
+                        all_possib_inp.append(
+                            self.get_higher_dim_obs([[x_a, y_a]], [self._pos_goal])
+                        )
+                    else:
+                        state[x_a, y_a] = 0.5
+                        all_possib_inp.append(state)
+        return np.array([all_possib_inp]).reshape(-1, 1, 48, 48)

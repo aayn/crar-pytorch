@@ -101,10 +101,22 @@ class CRARLightning(pl.LightningModule):
     def compute_trans_loss(self, encoded_batch):
         encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
         transition = self.agent.compute_transition(encoded_states, actions)
+
+        interp_loss = 0.0
+        if self.hparams.is_custom:
+            x2 = np.array([1, 0])
+            print(transition.shape)
+            # x2 = np.repeat(x2, transition.shape[0], axis=0)
+            x2 = torch.as_tensor(x2, device=self.device)
+            print(x2.shape)
+            # interp_loss = -nn.CosineSimilarity()(transition[0], x2).mean()
+
         print(f"trans = {transition[0]}")
         print(encoded_states[0])
         print(encoded_next_states[0])
-        return nn.MSELoss()(encoded_states + transition, encoded_next_states)
+        return (
+            nn.MSELoss()(encoded_states + transition, encoded_next_states) + interp_loss
+        )
 
     def compute_representation_loss(self, encoded_batch):
         # TODO: Recheck representation loss
@@ -182,7 +194,7 @@ class CRARLightning(pl.LightningModule):
         print(f"trans loss {trans_loss}")
         print(f"repr loss {representation_loss}")
 
-        loss = mf_loss + trans_loss + representation_loss
+        loss = mf_loss + 10 * trans_loss + 10 * representation_loss
 
         # self.mf_loss, self.trans_loss, self.representation_loss, self.loss = (
         #     mf_loss,
@@ -208,7 +220,8 @@ class CRARLightning(pl.LightningModule):
             # "reward": torch.tensor(reward).to(self.device),
             "mf_loss": mf_loss,
             "trans_loss": trans_loss,
-            "train_loss": loss,
+            "val_loss": loss,
+            "loss": loss,
         }
         status = {
             "steps": torch.tensor(self.global_step).to(self.device),
@@ -220,6 +233,7 @@ class CRARLightning(pl.LightningModule):
                 "mf_loss": mf_loss,
                 "trans_loss": trans_loss,
                 "loss": loss,
+                "val_loss": loss,
                 "log": log,
                 "progress_bar": status,
             }
@@ -234,27 +248,30 @@ class CRARLightning(pl.LightningModule):
         self, current_epoch, batch_nb, optimizer, optimizer_i, second_order_closure=None
     ):
         # print(optimizer)
-        for opt in optimizer:
-            opt.step()
-        for opt in optimizer:
-            opt.zero_grad()
+        # for opt in optimizer:
+        optimizer.step()
+        # for opt in optimizer:
+        optimizer.zero_grad()
 
     def configure_optimizers(self) -> List[Optimizer]:
         """ Initialize Optimizer"""
 
-        dq_optimizer = self.optimizer(
+        # dq_optimizer = self.optimizer(
+        #     self.agent.current_qnet.parameters(), **self.hparams.optimizer.params,
+        # )
+        # encoder_optimizer = self.optimizer(
+        #     self.agent.encoder.parameters(), **self.hparams.optimizer.params
+        # )
+        transition_optimizer = optim.Adam(
             list(self.agent.encoder.parameters())
+            + list(self.agent.transition_predictor.parameters())
             + list(self.agent.current_qnet.parameters()),
-            **self.hparams.optimizer.params,
+            lr=self.hparams.lr,
         )
-        encoder_optimizer = self.optimizer(
-            self.agent.encoder.parameters(), **self.hparams.optimizer.params
-        )
-        transition_optimizer = self.optimizer(
-            list(self.agent.encoder.parameters())
-            + list(self.agent.transition_predictor.parameters()),
-            **self.hparams.optimizer.params,
-        )
+
+        sched1 = optim.lr_scheduler.ReduceLROnPlateau(transition_optimizer)
+
+        return [transition_optimizer], [sched1]
         # dq_optimizer = optim.RMSprop(
         #     self.agent.current_qnet.parameters(), lr=self.hparams.qnet.lr
         # )
@@ -265,11 +282,13 @@ class CRARLightning(pl.LightningModule):
         #     self.agent.transition_predictor.parameters(), lr=self.hparams.qnet_lr
         # )
 
-        return [(dq_optimizer, encoder_optimizer, transition_optimizer)]
+        # return [(dq_optimizer, encoder_optimizer, transition_optimizer)]
 
     def __dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
-        dataset = ExperienceDataset(self.replay_buffer, self.hparams.episode_length)
+        dataset = ExperienceDataset(
+            self.replay_buffer, self.hparams.episode_length * self.hparams.batch_size
+        )
         dataloader = DataLoader(dataset=dataset, batch_size=self.hparams.batch_size)
         return dataloader
 
