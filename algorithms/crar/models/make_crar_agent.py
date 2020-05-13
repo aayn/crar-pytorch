@@ -6,7 +6,13 @@ from .qnet import QNetwork
 from .transition_predictor import TransitionPredictor
 from .reward_predictor import RewardPredictor
 
-NN_MAP = {"Conv2d": nn.Conv2d, "tanh": nn.Tanh, "Linear": nn.Linear, "relu": nn.ReLU}
+NN_MAP = {
+    "Conv2d": nn.Conv2d,
+    "MaxPool2d": nn.MaxPool2d,
+    "tanh": nn.Tanh,
+    "Linear": nn.Linear,
+    "relu": nn.ReLU,
+}
 
 
 def compute_feature_size(input_shape, convs):
@@ -21,6 +27,8 @@ def make_convs(input_shape, conv_config):
                 convs.append(NN_MAP[layer[0]](input_shape[0], layer[2], **layer[3]))
             else:
                 convs.append(NN_MAP[layer[0]](layer[1], layer[2], **layer[3]))
+        elif layer[0] == "MaxPool2d":
+            convs.append(NN_MAP[layer[0]](**layer[1]))
         else:
             convs.append(NN_MAP[layer]())
 

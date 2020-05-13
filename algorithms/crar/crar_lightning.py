@@ -103,13 +103,13 @@ class CRARLightning(pl.LightningModule):
         transition = self.agent.compute_transition(encoded_states, actions)
 
         interp_loss = 0.0
-        if self.hparams.is_custom:
-            x2 = np.array([1, 0])
-            print(transition.shape)
-            # x2 = np.repeat(x2, transition.shape[0], axis=0)
-            x2 = torch.as_tensor(x2, device=self.device)
-            print(x2.shape)
-            # interp_loss = -nn.CosineSimilarity()(transition[0], x2).mean()
+        # if self.hparams.is_custom:
+        #     x2 = np.array([1, 0])
+        #     print(transition.shape)
+        #     x2 = np.repeat(x2, transition.shape[0], axis=0)
+        #     x2 = torch.as_tensor(x2, device=self.device)
+        #     print(x2.shape)
+        #     interp_loss = -nn.CosineSimilarity()(transition[0], x2)
 
         print(f"trans = {transition[0]}")
         print(encoded_states[0])
@@ -140,7 +140,17 @@ class CRARLightning(pl.LightningModule):
             )
         )
 
-        ld1 = torch.exp(-Cd * torch.norm(random_states_1 - random_states_2))
+        # ld1 = torch.exp(-Cd * torch.norm(random_states_1[0] - random_states_2[0]))
+        ld1 = torch.exp(
+            -Cd
+            * torch.sqrt(
+                torch.clamp(
+                    torch.sum(torch.pow(random_states_1[0] - random_states_2[0], 2)),
+                    1e-6,
+                    10,
+                )
+            )
+        )
         # TODO: Try other alternatives if not mean
         # ld2 = torch.max(
         #     torch.as_tensor([(torch.norm(random_states_1, p=float("inf")) ** 2) - 1, 0])

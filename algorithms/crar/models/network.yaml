@@ -9,8 +9,17 @@ my-convs: &my-convs
   - [Conv2d, 64, 64, {kernel_size: 3}]
   - *act
 
+crar-convs: &crar-convs
+  - [Conv2d, auto, 8, {kernel_size: 2}]
+  - *act
+  - [Conv2d, 8, 16, {kernel_size: 2}]
+  - *act
+  - [MaxPool2d, {kernel_size: 2}]
+  - [Conv2d, 16, 32, {kernel_size: 3}]
+  - *act
+  - [MaxPool2d, {kernel_size: 3}]
 
-my-fc: &my-fc
+crar-fc: &crar-fc
   - [Linear, auto, 200]
   - *act
   - [Linear, 200, 100]
@@ -28,7 +37,15 @@ simple-q-fc: &simple-q-fc
   - *act
   - [Linear, 128, auto]
 
-trans-pred-fc: &trans-pred-fc
+crar-q-fc: &crar-q-fc
+- [Linear, auto, 50]
+- *act
+- [Linear, 50, 20]
+- *act
+- [Linear, 20, auto]
+
+
+crar-trans-pred-fc: &crar-trans-pred-fc
   - [Linear, auto, 10]
   - *act
   - [Linear, 10, 30]
@@ -39,7 +56,7 @@ trans-pred-fc: &trans-pred-fc
   - *act
   - [Linear, 10, auto]
 
-reward-pred-fc: &reward-pred-fc
+crar-float-fc: &crar-float-fc
   - [Linear, auto, 10]
   - *act
   - [Linear, 10, 50]
@@ -50,15 +67,15 @@ reward-pred-fc: &reward-pred-fc
 
 
 encoder:
-  convs: *my-convs
-  fc: *my-fc
+  convs: *crar-convs
+  fc: *crar-fc
 
 qnet:
   convs: *none
-  fc: *simple-q-fc
+  fc: *crar-q-fc
 
 trans-pred:
-  fc: *trans-pred-fc
+  fc: *crar-trans-pred-fc
 
 reward-pred:
-  fc: *reward-pred-fc
+  fc: *crar-float-fc

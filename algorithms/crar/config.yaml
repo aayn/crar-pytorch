@@ -51,7 +51,7 @@ SimpleMaze:
   abstract_state_dim: 2
   lr: !!python/float 1e-4
   optimizer:
-    name: Adam
+    name: RMSprop
     params: {lr: !!python/float 1e-4}
     grad_clip_norm: 1.0
     # qnet_lr: !!python/float 5e-4
