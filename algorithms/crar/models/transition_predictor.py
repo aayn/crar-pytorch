@@ -13,5 +13,5 @@ class TransitionPredictor(nn.Module):
         self.fc = fc
 
     def forward(self, x):
-        x = self.fc(x.float())
-        return x
+        tr = self.fc(x.float())
+        return x[:, :2] + tr

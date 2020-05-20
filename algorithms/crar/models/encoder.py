@@ -39,6 +39,5 @@ class SimpleEncoder(nn.Module):
         )
 
     def forward(self, x):
-        # print(self.device)
         x = self.fc(torch.as_tensor(x, device=self.device).float())
         return x

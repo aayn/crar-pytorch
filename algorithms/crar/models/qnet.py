@@ -39,9 +39,3 @@ class QNetwork(nn.Module, QLearner):
         q_value = self(state)
         action = torch.argmax(q_value).item()
         return action
-
-
-def synchronize_target_model(
-    current_model: torch.nn.Module, target_model: torch.nn.Module
-):
-    target_model.load_state_dict(current_model.state_dict())

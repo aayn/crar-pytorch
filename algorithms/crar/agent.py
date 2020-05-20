@@ -70,9 +70,15 @@ class CRARAgent(nn.Module, AbstractAgent):
 
         if double_learning:
             self.target_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)
+            self.target_encoder = make_encoder(
+                env.observation_space.shape, abstract_state_dim, device
+            )
             # SimpleQNetwork(abstract_state_dim, env.action_space.n, device, qnet_act)
             synchronize_target_model(self.current_qnet, self.target_qnet)
+            synchronize_target_model(self.encoder, self.target_encoder)
+
             self.target_qnet.to(self.device)
+            self.target_encoder.to(self.device)
 
         self.reward_predictor = make_reward_predictor(
             abstract_state_dim, self.num_actions
@@ -92,7 +98,7 @@ class CRARAgent(nn.Module, AbstractAgent):
     def forward(self, x):
         self.get_value(x)
 
-    def encode(self, obs):
+    def encode(self, obs, from_current=True):
         # print(f"Three {obs.shape}")
         # if self.prev_obs is not None:
         #     try:
@@ -101,7 +107,9 @@ class CRARAgent(nn.Module, AbstractAgent):
         #         pass
         self.prev_obs = obs
         obs = torch.as_tensor(obs, device=self.device)
-        return self.encoder(obs)
+        if from_current:
+            return self.encoder(obs)
+        return self.target_encoder(obs)
 
     def get_value(self, encoded_state, from_current=True):
         # encoded_state = self.encode(obs)
@@ -112,10 +120,13 @@ class CRARAgent(nn.Module, AbstractAgent):
     def compute_transition(self, encoded_state, actions):
         # encoded_state = self.encode(obs)
         # TODO: Decide if use one-hot or not.
-        actions = nn.functional.one_hot(actions, self.num_actions)
+        # print(actions)
+        # actions = nn.functional.one_hot(actions, self.num_actions)
+        # print(actions)
         # print(actions.shape)
-        # x = torch.cat([encoded_state, actions.float().view(32, 1)], 1)
-        x = torch.cat([encoded_state, actions.float()], 1)
+        x = torch.cat([encoded_state, actions.float().view(-1, 1)], 1)
+        # x = torch.cat([encoded_state, actions.float()], 1)
+        # print(x)
         return self.transition_predictor(x)
 
     # @torch.no_grad()

@@ -56,7 +56,8 @@ def make_transition_predictor(abstract_dim, num_actions):
     with open("models/network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     tp_config = config["trans-pred"]
-    fc = make_fc(abstract_dim + num_actions, abstract_dim, tp_config["fc"])
+    # fc = make_fc(abstract_dim + num_actions, abstract_dim, tp_config["fc"])
+    fc = make_fc(abstract_dim + 1, abstract_dim, tp_config["fc"])
     transition_predictor = TransitionPredictor(abstract_dim, num_actions, fc)
     return transition_predictor
 
@@ -65,7 +66,9 @@ def make_reward_predictor(abstract_dim, num_actions):
     with open("models/network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     rp_config = config["reward-pred"]
-    fc = make_fc(abstract_dim + num_actions, abstract_dim, rp_config["fc"])
+    # fc = make_fc(abstract_dim + num_actions, abstract_dim, rp_config["fc"])
+    fc = make_fc(abstract_dim + 1, abstract_dim, rp_config["fc"])
+
     reward_predictor = RewardPredictor(abstract_dim, num_actions, fc)
     return reward_predictor
 
