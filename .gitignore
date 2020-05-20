@@ -140,3 +140,5 @@ wandb/
 
 *.ckpt
 *.pdf
+
+plots/

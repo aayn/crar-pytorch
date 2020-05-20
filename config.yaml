@@ -19,7 +19,7 @@ CartPole-v0:
   max_episode_reward: 200
   is_atari: False
   is_custom: False
-  logger_dir: cartpole_lightning
+  logger_dir: cartpole
 
 PongNoFrameskip-v4:
   env: PongNoFrameskip-v4
@@ -42,7 +42,7 @@ PongNoFrameskip-v4:
   max_episode_reward: 21
   is_atari: True
   is_custom: False
-  logger_dir: pong_lightning
+  logger_dir: pong
 
 SimpleMaze:
   env: SimpleMaze
@@ -67,4 +67,5 @@ SimpleMaze:
   max_episode_reward: 0
   is_atari: False
   is_custom: True
-  logger_dir: simple_maze_lightning
+  logger_dir: simple_maze
+  plot_dir: /home/aayn/Programming/yarl/plots/test_plots16_interp

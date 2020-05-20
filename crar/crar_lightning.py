@@ -1,3 +1,4 @@
+import inspect
 import pytorch_lightning as pl
 import argparse
 from collections import OrderedDict, deque
@@ -15,10 +16,24 @@ from crar.agent import CRARAgent
 from crar.data import ReplayBuffer, Experience, ExperienceDataset
 from crar.environments import SimpleMaze
 from crar.plotting import plot_maze_abstract_transitions
+from crar.utils import nonthrowing_issubclass
+from crar.losses import (
+    compute_mf_loss,
+    compute_trans_loss,
+    compute_ld1_loss,
+    compute_ld1_prime_loss,
+    compute_ld2_loss,
+)
 
 
 class CRARLightning(pl.LightningModule):
-    optimizers = {"Adam": optim.Adam, "RMSprop": optim.RMSprop}
+
+    # Store all the PyTorch optimizers in a dictionary with their names as key
+    OPTIMIZERS = {
+        k: v
+        for k, v in inspect.getmembers(torch.optim)
+        if nonthrowing_issubclass(v, torch.optim.Optimizer)
+    }
 
     def __init__(self, hparams: Box):
         super().__init__()
@@ -30,7 +45,7 @@ class CRARLightning(pl.LightningModule):
         else:
             self.env = gym.make(hparams.env)
 
-        self.optimizer = CRARLightning.optimizers[self.hparams.optimizer.name]
+        self.optimizer = CRARLightning.OPTIMIZERS[self.hparams.optimizer.name]
 
         self.reset()
 
@@ -84,101 +99,23 @@ class CRARLightning(pl.LightningModule):
         return self.agent.get_value(x)
 
     def compute_mf_loss(self, batch):
-        states, actions, rewards, dones, next_states = batch
-        encoded_states = self.agent.encode(states)
-
-        state_action_values = (
-            self.agent.get_value(encoded_states)
-            .gather(1, actions.unsqueeze(-1))
-            .squeeze(-1)
-        )
-
-        with torch.no_grad():
-            next_state_values = self.agent.get_value(
-                self.agent.encode(next_states, from_current=False), from_current=False
-            ).max(1)[0]
-            next_state_values[dones] = 0.0
-            next_state_values = next_state_values.detach()
-
-        expected_state_action_values = next_state_values * self.hparams.gamma + rewards
-
-        return nn.MSELoss()(state_action_values, expected_state_action_values)
+        return compute_mf_loss(self.agent, batch, self.hparams)
 
     def compute_trans_loss(self, encoded_batch):
-        encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
-        predicted_next_states = self.agent.compute_transition(encoded_states, actions)
-
-        # if self.hparams.is_custom:
-        #     x2 = np.array([1, 0])
-        #     print(transition.shape)
-        #     x2 = np.repeat(x2, transition.shape[0], axis=0)
-        #     x2 = torch.as_tensor(x2, device=self.device)
-        #     print(x2.shape)
-        #     interp_loss = -nn.CosineSimilarity()(transition[0], x2)
-
-        # print(f"trans = {transition[0]}")
-        # print(encoded_states[0])
-        # print(encoded_next_states[0])
-        return nn.MSELoss()(predicted_next_states, encoded_next_states)
+        return compute_trans_loss(self.agent, encoded_batch)
 
     def compute_ld1_loss(self):
-        random_states_1 = self.replay_buffer.sample(self.hparams.batch_size)[0]
-        random_states_2 = np.roll(random_states_1, 1, axis=0)
-
-        random_states_1 = self.agent.encode(
-            torch.as_tensor(random_states_1, device=self.device)
+        return compute_ld1_loss(
+            self.agent, self.replay_buffer, self.hparams, self.device
         )
-        random_states_2 = self.agent.encode(
-            torch.as_tensor(random_states_2, device=self.device)
-        )
-
-        ld1 = torch.exp(
-            -5
-            * torch.sqrt(
-                torch.clamp(
-                    torch.sum(
-                        torch.pow(random_states_1 - random_states_2, 2),
-                        dim=1,
-                        keepdim=True,
-                    ),
-                    1e-6,
-                    10,
-                )
-            )
-        ).sum()
-
-        return ld1
 
     def compute_ld2_loss(self):
-        random_states_1 = self.replay_buffer.sample(self.hparams.batch_size)[0]
-
-        random_states_1 = self.agent.encode(
-            torch.as_tensor(random_states_1, device=self.device)
+        return compute_ld2_loss(
+            self.agent, self.replay_buffer, self.hparams, self.device
         )
-        ld2 = torch.clamp(torch.max(torch.pow(random_states_1, 2)) - 1.0, 0.0, 100.0)
-
-        return ld2
 
     def compute_ld1_prime_loss(self, encoded_batch):
-        encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
-
-        beta = 0.2
-        ld1_ = torch.exp(
-            -5
-            * torch.sqrt(
-                torch.clamp(
-                    torch.sum(
-                        torch.pow(encoded_states - encoded_next_states, 2),
-                        dim=1,
-                        keepdim=True,
-                    ),
-                    1e-6,
-                    10,
-                )
-            )
-        ).sum()
-
-        return beta * ld1_
+        return compute_ld1_prime_loss(encoded_batch)
 
     def compute_interp_loss(self, encoded_batch):
         encoded_states, *_ = encoded_batch
@@ -187,34 +124,6 @@ class CRARLightning(pl.LightningModule):
         transition = predicted_next_states - encoded_states
 
         return -(nn.CosineSimilarity()(transition, self.interp_vector)).sum()
-
-    def compute_representation_loss(self, encoded_batch):
-        # TODO: Recheck representation loss
-        ld1 = 0
-        ld2 = 0
-        Cd = 5
-        # TODO: Currently doesn't deal with batches
-
-        # # random_states_1, random_states_2 = [[1]], [[1]]
-        # # while random_states_1[0][0] == random_states_2[0][0]:
-        # #     random_states_1 = self.replay_buffer.sample(encoded_states.shape[0])[0]
-        # #     # random_states_2 = self.replay_buffer.sample(encoded_states.shape[0])[0]
-        # #     random_states_2 =
-
-        # # print(random_states_1[0])
-        # # print(random_states_1[1])
-
-        # # TODO: Try other alternatives if not mean
-        # # ld2 = torch.max(
-        # #     torch.as_tensor([(torch.norm(random_states_1, p=float("inf")) ** 2) - 1, 0])
-        # # )
-        # ld2 = torch.clamp(torch.max(torch.pow(random_states_1, 2)) - 1.0, 0.0, 100.0)
-        # # print(ld2)
-        # # ld2 = 1 / (torch.norm(random_states_1) + 1e-3)
-
-        # encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
-
-        # return ld1 + beta * ld1_ + ld2
 
     def training_step(self, batch, batch_number, optimizer_idx=None):
         states, actions, rewards, dones, next_states = batch
@@ -305,60 +214,6 @@ class CRARLightning(pl.LightningModule):
 
         return output
 
-        # log = {
-        #     "total_reward": torch.tensor(self.total_reward).to(self.device),
-        #     # "reward": torch.tensor(reward).to(self.device),
-        #     "mf_loss": mf_loss,
-        #     "trans_loss": trans_loss,
-        #     "val_loss": loss,
-        #     "loss": loss,
-        # }
-        # status = {
-        #     "steps": torch.tensor(self.global_step).to(self.device),
-        #     "total_reward": torch.tensor(self.total_reward).to(self.device),
-        # }
-
-        # ret = OrderedDict(
-        #     # {
-        #     #     "mf_loss": mf_loss,
-        #     #     "trans_loss": trans_loss,
-        #     # "loss": 0.0,
-        #     #     "val_loss": loss,
-        #     #     "log": log,
-        #     #     "progress_bar": status,
-        #     # }
-        # )
-
-        # trans_loss = self.compute_trans_loss(encoded_batch)
-        # representation_loss = self.compute_representation_loss(encoded_batch)
-
-        # print(f"mf loss {mf_loss}")
-        # print(f"trans loss {trans_loss}")
-        # print(f"repr loss {representation_loss}")
-
-        # loss = mf_loss + 10 * trans_loss + 10 * representation_loss
-
-        # self.mf_loss, self.trans_loss, self.representation_loss, self.loss = (
-        #     mf_loss,
-        #     trans_loss,
-        #     representation_loss,
-        #     loss,
-        # )
-
-        # else:
-        #     mf_loss, trans_loss, representation_loss, loss = (
-        #         self.mf_loss,
-        #         self.trans_loss,
-        #         self.representation_loss,
-        #         self.loss,
-        #     )
-        # loss = trans_loss
-
-    # def training_epoch_end(self, outputs):
-    #     print("Hello from training_epoch_end")
-    #     print(outputs)
-    #     return outputs
-
     def on_epoch_end(self):
         if self.hparams.is_custom:
             all_inputs = self.env.all_possible_inputs()
@@ -368,19 +223,17 @@ class CRARLightning(pl.LightningModule):
                 encoded_inputs.detach().cpu().numpy(),
                 self,
                 self.global_step,
+                self.hparams.plot_dir,
             )
 
     def optimizer_step(
         self, current_epoch, batch_nb, optimizer, optimizer_i, second_order_closure=None
     ):
-        # print(optimizer)
-        # for opt in optimizer:
         optimizer.step()
-        # for opt in optimizer:
         optimizer.zero_grad()
 
     def configure_optimizers(self) -> List[Optimizer]:
-        """ Initialize Optimizer"""
+        """Initialize optimizers."""
 
         dq_optimizer = self.optimizer(
             list(self.agent.encoder.parameters())
@@ -412,7 +265,6 @@ class CRARLightning(pl.LightningModule):
             lr=self.hparams.optimizer.params["lr"] / 2.0,
         )
 
-        # sched1 = optim.lr_scheduler.ReduceLROnPlateau(transition_optimizer)
         dq_sched = optim.lr_scheduler.ExponentialLR(dq_optimizer, 0.97)
         repr_sched1 = optim.lr_scheduler.ExponentialLR(representation_optimizer1, 0.97)
         repr_sched2 = optim.lr_scheduler.ExponentialLR(representation_optimizer2, 0.97)
@@ -429,20 +281,15 @@ class CRARLightning(pl.LightningModule):
                 transition_optimizer,
                 interp_optimizer,
             ],
-            [dq_sched, repr_sched1, repr_sched2, repr_sched3, trans_sched, interp_sched]
-            # [dq_sched, repr_sched1, repr_sched2, repr_sched3, trans_sched],
+            [
+                dq_sched,
+                repr_sched1,
+                repr_sched2,
+                repr_sched3,
+                trans_sched,
+                interp_sched,
+            ],
         )
-        # dq_optimizer = optim.RMSprop(
-        #     self.agent.current_qnet.parameters(), lr=self.hparams.qnet.lr
-        # )
-        # encoder_optimizer = optim.RMSprop(
-        #     self.agent.encoder.parameters(), lr=self.hparams.qnet_lr
-        # )
-        # transition_optimizer = optim.RMSprop(
-        #     self.agent.transition_predictor.parameters(), lr=self.hparams.qnet_lr
-        # )
-
-        # return [(dq_optimizer, encoder_optimizer, transition_optimizer)]
 
     def __dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
@@ -455,7 +302,7 @@ class CRARLightning(pl.LightningModule):
         return dataloader
 
     def train_dataloader(self) -> DataLoader:
-        """Get train loader"""
+        """Get train loader."""
         return self.__dataloader()
 
     def get_device(self) -> str:

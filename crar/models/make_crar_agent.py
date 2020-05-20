@@ -53,7 +53,7 @@ def make_fc(input_dim, out_dim, fc_config):
 
 
 def make_transition_predictor(abstract_dim, num_actions):
-    with open("models/network.yaml") as f:
+    with open("crar/models/network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     tp_config = config["trans-pred"]
     # fc = make_fc(abstract_dim + num_actions, abstract_dim, tp_config["fc"])
@@ -63,7 +63,7 @@ def make_transition_predictor(abstract_dim, num_actions):
 
 
 def make_reward_predictor(abstract_dim, num_actions):
-    with open("models/network.yaml") as f:
+    with open("crar/models/network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     rp_config = config["reward-pred"]
     # fc = make_fc(abstract_dim + num_actions, abstract_dim, rp_config["fc"])
@@ -74,7 +74,7 @@ def make_reward_predictor(abstract_dim, num_actions):
 
 
 def make_encoder(input_shape, abstract_dim, device) -> Encoder:
-    with open("models/network.yaml") as f:
+    with open("crar/models/network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     encoder_config = config["encoder"]
 
@@ -89,7 +89,7 @@ def make_encoder(input_shape, abstract_dim, device) -> Encoder:
 
 
 def make_qnet(input_dim, num_actions, device) -> QNetwork:
-    with open("models/network.yaml") as f:
+    with open("crar/models/network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     qnet_config = config["qnet"]
 

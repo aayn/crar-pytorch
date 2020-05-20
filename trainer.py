@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from crar_lightning import CRARLightning
+from crar.crar_lightning import CRARLightning
 import numpy as np
 import torch
 import argparse
@@ -15,7 +15,7 @@ def main(hparams):
     model = CRARLightning(hparams)
 
     # logger = TensorBoardLogger(save_dir=os.getcwd(), name=hparams.logger_dir)
-    logger = WandbLogger(name="test_plots15_interp")
+    logger = WandbLogger(name="test_plots16_interp")
     logger.watch(model, log="all", log_freq=100)
 
     grad_clip_norm = 0

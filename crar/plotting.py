@@ -12,6 +12,7 @@ import matplotlib.cm as cm
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, DrawingArea, HPacker
 from typing import Union
+from pathlib import Path
 
 matplotlib.use("qt5agg")
 
@@ -26,7 +27,12 @@ def most_recent(buffer, n: Union[None, int] = None):
     return vals
 
 
-def plot_maze_abstract_transitions(all_inputs, all_abs_inputs, model, global_step):
+def plot_maze_abstract_transitions(
+    all_inputs, all_abs_inputs, model, global_step, plot_dir
+):
+    if not isinstance(plot_dir, Path):
+        plot_dir = Path(plot_dir)
+
     exp_seq = list(reversed(most_recent(model.replay_buffer.buffer, 1000)))
 
     # matplotlib.rcParams["figure.figsize"] = (15, 15)
@@ -159,4 +165,5 @@ def plot_maze_abstract_transitions(all_inputs, all_abs_inputs, model, global_ste
         borderpad=0.0,
     )
     ax.add_artist(anchored_box)
-    plt.savefig(f"test_plots15_interp/plot_{global_step}.pdf")
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    plt.savefig(plot_dir / f"plot_{global_step}.pdf")
