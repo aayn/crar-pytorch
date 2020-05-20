@@ -23,6 +23,7 @@ from crar.losses import (
     compute_ld1_loss,
     compute_ld1_prime_loss,
     compute_ld2_loss,
+    compute_interp_loss,
 )
 
 
@@ -98,33 +99,6 @@ class CRARLightning(pl.LightningModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.agent.get_value(x)
 
-    def compute_mf_loss(self, batch):
-        return compute_mf_loss(self.agent, batch, self.hparams)
-
-    def compute_trans_loss(self, encoded_batch):
-        return compute_trans_loss(self.agent, encoded_batch)
-
-    def compute_ld1_loss(self):
-        return compute_ld1_loss(
-            self.agent, self.replay_buffer, self.hparams, self.device
-        )
-
-    def compute_ld2_loss(self):
-        return compute_ld2_loss(
-            self.agent, self.replay_buffer, self.hparams, self.device
-        )
-
-    def compute_ld1_prime_loss(self, encoded_batch):
-        return compute_ld1_prime_loss(encoded_batch)
-
-    def compute_interp_loss(self, encoded_batch):
-        encoded_states, *_ = encoded_batch
-        actions = torch.tensor([0] * self.hparams.batch_size, device=self.device)
-        predicted_next_states = self.agent.compute_transition(encoded_states, actions)
-        transition = predicted_next_states - encoded_states
-
-        return -(nn.CosineSimilarity()(transition, self.interp_vector)).sum()
-
     def training_step(self, batch, batch_number, optimizer_idx=None):
         states, actions, rewards, dones, next_states = batch
         encoded_batch = (
@@ -152,8 +126,7 @@ class CRARLightning(pl.LightningModule):
             else:
                 self.episode_reward = 0
 
-            mf_loss = self.compute_mf_loss(batch)
-            # loss = mf_loss
+            mf_loss = compute_mf_loss(self.agent, batch, self.hparams)
 
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 mf_loss = mf_loss.unsqueeze(0)
@@ -164,7 +137,9 @@ class CRARLightning(pl.LightningModule):
             )
 
         elif optimizer_idx == 1:
-            ld1_loss = self.compute_ld1_loss()
+            ld1_loss = compute_ld1_loss(
+                self.agent, self.replay_buffer, self.hparams, self.device
+            )
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 ld1_loss = ld1_loss.unsqueeze(0)
 
@@ -174,7 +149,9 @@ class CRARLightning(pl.LightningModule):
             )
 
         elif optimizer_idx == 2:
-            ld2_loss = self.compute_ld2_loss()
+            ld2_loss = compute_ld2_loss(
+                self.agent, self.replay_buffer, self.hparams, self.device
+            )
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 ld2_loss = ld2_loss.unsqueeze(0)
 
@@ -184,7 +161,7 @@ class CRARLightning(pl.LightningModule):
             )
 
         elif optimizer_idx == 3:
-            ld1_prime_loss = self.compute_ld1_prime_loss(encoded_batch)
+            ld1_prime_loss = compute_ld1_prime_loss(encoded_batch)
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 ld1_prime_loss = ld1_prime_loss.unsqueeze(0)
 
@@ -194,7 +171,7 @@ class CRARLightning(pl.LightningModule):
             )
 
         elif optimizer_idx == 4:
-            transition_loss = self.compute_trans_loss(encoded_batch)
+            transition_loss = compute_trans_loss(self.agent, encoded_batch)
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 transition_loss = transition_loss.unsqueeze(0)
 
@@ -203,7 +180,9 @@ class CRARLightning(pl.LightningModule):
                 {"loss": transition_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
             )
         elif optimizer_idx == 5:
-            interp_loss = self.compute_interp_loss(encoded_batch)
+            interp_loss = compute_interp_loss(
+                self.agent, encoded_batch, self.interp_vector, self.hparams, self.device
+            )
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 interp_loss = interp_loss.unsqueeze(0)
 

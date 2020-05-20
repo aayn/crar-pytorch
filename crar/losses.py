@@ -3,6 +3,19 @@ import torch
 import torch.nn as nn
 
 
+def compute_disambiguation(tensor1, tensor2, Cd=5.0):
+    return torch.exp(
+        -Cd
+        * torch.sqrt(
+            torch.clamp(
+                torch.sum(torch.pow(tensor1 - tensor2, 2), dim=1, keepdim=True,),
+                1e-6,
+                10,
+            )
+        )
+    ).sum()
+
+
 def compute_mf_loss(agent, batch, hparams=None):
     """Computes the model-free double Q-learning loss."""
 
@@ -43,21 +56,7 @@ def compute_ld1_loss(agent, replay_buffer, hparams=None, device="cpu"):
     random_states_1 = agent.encode(torch.as_tensor(random_states_1, device=device))
     random_states_2 = agent.encode(torch.as_tensor(random_states_2, device=device))
 
-    ld1 = torch.exp(
-        -5
-        * torch.sqrt(
-            torch.clamp(
-                torch.sum(
-                    torch.pow(random_states_1 - random_states_2, 2),
-                    dim=1,
-                    keepdim=True,
-                ),
-                1e-6,
-                10,
-            )
-        )
-    ).sum()
-
+    ld1 = compute_disambiguation(random_states_1, random_states_2)
     return ld1
 
 
@@ -67,21 +66,7 @@ def compute_ld1_prime_loss(encoded_batch, hparams=None):
     encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
 
     beta = 0.2
-    ld1_ = torch.exp(
-        -5
-        * torch.sqrt(
-            torch.clamp(
-                torch.sum(
-                    torch.pow(encoded_states - encoded_next_states, 2),
-                    dim=1,
-                    keepdim=True,
-                ),
-                1e-6,
-                10,
-            )
-        )
-    ).sum()
-
+    ld1_ = compute_disambiguation(encoded_states, encoded_next_states)
     return beta * ld1_
 
 
@@ -94,3 +79,14 @@ def compute_ld2_loss(agent, replay_buffer, hparams=None, device="cpu"):
     ld2 = torch.clamp(torch.max(torch.pow(random_states_1, 2)) - 1.0, 0.0, 100.0)
 
     return ld2
+
+
+def compute_interp_loss(
+    agent, encoded_batch, interp_vector, hparams=None, device="cpu"
+):
+    encoded_states, *_ = encoded_batch
+    actions = torch.tensor([0] * hparams.batch_size, device=device)
+    predicted_next_states = agent.compute_transition(encoded_states, actions)
+    transition = predicted_next_states - encoded_states
+
+    return -(nn.CosineSimilarity()(transition, interp_vector)).sum()
