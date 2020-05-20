@@ -27,8 +27,8 @@ class ReplayBuffer:
     def push(self, experience: Experience) -> None:
         self.buffer.appendleft(experience)
 
-    def sample(self, batch_size: int) -> Tuple:
-        indices = np.random.choice(len(self.buffer), batch_size, replace=False)
+    def sample(self, batch_size: int, replace=False) -> Tuple:
+        indices = np.random.choice(len(self.buffer), batch_size, replace=replace)
         states, actions, rewards, dones, next_states = zip(
             *[self.buffer[idx] for idx in indices]
         )
@@ -52,13 +52,14 @@ class ReplayBuffer:
 
 
 class ExperienceDataset(IterableDataset):
-    def __init__(self, buffer: ReplayBuffer, sample_size: int = 128):
+    def __init__(self, buffer: ReplayBuffer, sample_size: int = 128, replace=False):
         self.buffer = buffer
         self.sample_size = sample_size
+        self.replace = replace
 
     def __iter__(self) -> Tuple:
         states, actions, rewards, dones, next_states = self.buffer.sample(
-            self.sample_size
+            self.sample_size, self.replace
         )
         for i in range(len(dones)):
             yield states[i], actions[i], rewards[i], dones[i], next_states[i]

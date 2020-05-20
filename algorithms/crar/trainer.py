@@ -7,13 +7,16 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import os
 import yaml
 from box import Box
+from pytorch_lightning.loggers import WandbLogger
 
 
 def main(hparams):
     # TODO: Check that all view, reshape, transpose are used correctly
     model = CRARLightning(hparams)
 
-    logger = TensorBoardLogger(save_dir=os.getcwd(), name=hparams.logger_dir)
+    # logger = TensorBoardLogger(save_dir=os.getcwd(), name=hparams.logger_dir)
+    logger = WandbLogger(name="test_plots15_interp")
+    logger.watch(model, log="all", log_freq=100)
 
     grad_clip_norm = 0
     try:
@@ -29,7 +32,7 @@ def main(hparams):
         early_stop_callback=False,
         gradient_clip_val=grad_clip_norm,
         benchmark=True,
-        auto_lr_find=True
+        # auto_lr_find=True
         # val_check_interval=100,
         # log_gpu_memory="all",
     )

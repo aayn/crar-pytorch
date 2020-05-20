@@ -46,24 +46,24 @@ PongNoFrameskip-v4:
 
 SimpleMaze:
   env: SimpleMaze
-  max_epochs: 50
+  max_epochs: 500
   batch_size: 32
   abstract_state_dim: 2
-  lr: !!python/float 1e-4
+  lr: !!python/float 5e-4
   optimizer:
-    name: Adam
-    params: {lr: !!python/float 1e-4}
+    name: RMSprop
+    params: {lr: !!python/float 5e-4}
     grad_clip_norm: 1.0
     # qnet_lr: !!python/float 5e-4
     # encoder_lr: !!python/float 5e-4
   gamma: 0.99
   sync_rate: 1000 # freeze interval
-  replay_size: 1000000
-  warm_start_size: 200000
+  replay_size: 5000
+  warm_start_size: 5000
   eps_last_frame: 1000
   eps_start: 1.0
   eps_end: 1.0  # Random actions
-  episode_length: 5000
+  episode_length: 2000
   max_episode_reward: 0
   is_atari: False
   is_custom: True

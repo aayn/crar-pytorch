@@ -1,33 +1,81 @@
-# Dimensionality of the abstract space
-abstract-dim: &abstract-dim 3
-# Activation function to use
-activation: &activation Tanh
-# Number of actions in the current environment
-num-actions: &num-actions 2
+act: &act tanh
+none: &none !!python/none None
 
-input-channels: &input-channels 3
+my-convs: &my-convs
+  - [Conv2d, auto, 32, {kernel_size: 2}]
+  - *act
+  - [Conv2d, 32, 64, {kernel_size: 2}]
+  - *act
+  - [Conv2d, 64, 64, {kernel_size: 3}]
+  - *act
+
+crar-convs: &crar-convs
+  - [Conv2d, auto, 8, {kernel_size: 2}]
+  - *act
+  - [Conv2d, 8, 16, {kernel_size: 2}]
+  - *act
+  - [MaxPool2d, {kernel_size: 2}]
+  - [Conv2d, 16, 32, {kernel_size: 3}]
+  - *act
+  - [MaxPool2d, {kernel_size: 3}]
+
+crar-fc: &crar-fc
+  - [Linear, auto, 200]
+  - *act
+  - [Linear, 200, 100]
+  - *act
+  - [Linear, 100, 50]
+  - *act
+  - [Linear, 50, 10]
+  - *act
+  - [Linear, 10, auto]
+
+simple-q-fc: &simple-q-fc
+  - [Linear, auto, 128]
+  - *act
+  - [Linear, 128, 128]
+  - *act
+  - [Linear, 128, auto]
+
+crar-q-fc: &crar-q-fc
+- [Linear, auto, 50]
+- *act
+- [Linear, 50, 20]
+- *act
+- [Linear, 20, auto]
 
 
-crar-encoder:
-  convs:
-    - Conv2d: [*input-channels, 8, 2]
-    - *activation
-    - Conv2d: [8, 16, 2]
-    - *activation
-    - MaxPool2d: [2]
-    
-  fc:
+crar-trans-pred-fc: &crar-trans-pred-fc
+  - [Linear, auto, 10]
+  - *act
+  - [Linear, 10, 30]
+  - *act
+  - [Linear, 30, 30]
+  - *act
+  - [Linear, 30, 10]
+  - *act
+  - [Linear, 10, auto]
 
-crar-qnet-with-abstract: &cqwa
-  - Linear: [*abstract-dim, 20]
-  - *activation
-  - Linear: [20, 50]
-  - *activation
-  - Linear: [50, *num-actions]
+crar-float-fc: &crar-float-fc
+  - [Linear, auto, 10]
+  - *act
+  - [Linear, 10, 50]
+  - *act
+  - [Linear, 50, 20]
+  - *act
+  - [Linear, 20, 1]
 
 
+encoder:
+  convs: *crar-convs
+  fc: *crar-fc
 
+qnet:
+  convs: *none
+  fc: *crar-q-fc
 
-agent:
-  encoder:
-  q-network: *cqwa
+trans-pred:
+  fc: *crar-trans-pred-fc
+
+reward-pred:
+  fc: *crar-float-fc

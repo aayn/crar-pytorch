@@ -137,3 +137,6 @@ wandb/
 # Log files and directories
 *logs
 *_lightning/
+
+*.ckpt
+*.pdf
