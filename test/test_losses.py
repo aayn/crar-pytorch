@@ -24,7 +24,7 @@ class TestDisambiguation:
 
     def test_large_value(self):
         a, b = torch.tensor([[0.0]]), torch.tensor([[100.0]])
-        expected = torch.exp(torch.tensor([[-5.0 * np.sqrt(10.0)]]))
+        expected = torch.exp(-5.0 * torch.tensor([[np.sqrt(10.0)]]))
         actual = compute_disambiguation(a, b)
         assert actual == expected
 
