@@ -1,6 +1,7 @@
 import pytorch_lightning as pl
 import torch
 import numpy as np
+from crar.environments import SimpleMaze
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
@@ -12,11 +13,7 @@ from matplotlib.patches import Circle, Rectangle
 from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, DrawingArea, HPacker
 from typing import Union
 
-
 matplotlib.use("qt5agg")
-# %matplotlib inline
-# matplotlib.rcParams.keys()
-from environments import SimpleMaze
 
 
 def most_recent(buffer, n: Union[None, int] = None):

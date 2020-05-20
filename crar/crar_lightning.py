@@ -8,13 +8,13 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
-from wrappers import make_atari, wrap_deepmind, wrap_pytorch
-from agent import CRARAgent
-from data import ReplayBuffer, Experience, ExperienceDataset
 import numpy as np
 from box import Box
-from environments import SimpleMaze
-from plotting import plot_maze_abstract_transitions
+from crar.wrappers import make_atari, wrap_deepmind, wrap_pytorch
+from crar.agent import CRARAgent
+from crar.data import ReplayBuffer, Experience, ExperienceDataset
+from crar.environments import SimpleMaze
+from crar.plotting import plot_maze_abstract_transitions
 
 
 class CRARLightning(pl.LightningModule):

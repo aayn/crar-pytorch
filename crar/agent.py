@@ -1,4 +1,4 @@
-from models import (
+from crar.models import (
     synchronize_target_model,
     RewardPredictor,
     TransitionPredictor,
@@ -13,7 +13,7 @@ import numpy as np
 import torch.nn as nn
 import gym
 
-from data import ReplayBuffer
+from crar.data import ReplayBuffer
 
 
 class AbstractAgent(abc.ABC):
