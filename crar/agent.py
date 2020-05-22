@@ -1,11 +1,10 @@
 from crar.models import (
     synchronize_target_model,
-    RewardPredictor,
-    TransitionPredictor,
     make_encoder,
     make_qnet,
     make_transition_predictor,
     make_reward_predictor,
+    make_discount_predictor,
 )
 import torch
 import abc
@@ -48,19 +47,23 @@ class CRARAgent(nn.Module, AbstractAgent):
         self.double_learning = double_learning
         self.image_space = len(env.observation_space.shape) > 1
 
+        self.encoder = make_encoder(
+            env.observation_space.shape, abstract_state_dim, device
+        )
+
         # Observation consists of joint values
-        if not self.image_space:
-            self.encoder = SimpleEncoder(
-                env.observation_space.shape, device, encoder_act, abstract_state_dim
-            )
-        # Observation is an image
-        else:
-            self.encoder = make_encoder(
-                env.observation_space.shape, abstract_state_dim, device
-            )
-            # Encoder(
-            #     env.observation_space.shape, device, encoder_act, abstract_state_dim
-            # )
+        # if not self.image_space:
+        #     self.encoder = SimpleEncoder(
+        #         env.observation_space.shape, device, encoder_act, abstract_state_dim
+        #     )
+        # # Observation is an image
+        # else:
+        #     self.encoder = make_encoder(
+        #         env.observation_space.shape, abstract_state_dim, device
+        #     )
+        #     # Encoder(
+        #     #     env.observation_space.shape, device, encoder_act, abstract_state_dim
+        #     # )
 
         self.current_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)
         # SimpleQNetwork(abstract_state_dim, env.action_space.n, device, qnet_act)
@@ -85,6 +88,12 @@ class CRARAgent(nn.Module, AbstractAgent):
         )
         # RewardPredictor(abstract_state_dim, rp_act)
         self.reward_predictor.to(self.device)
+
+        self.discount_predictor = make_discount_predictor(
+            abstract_state_dim, self.num_actions
+        )
+        # RewardPredictor(abstract_state_dim, rp_act)
+        self.discount_predictor.to(self.device)
 
         self.transition_predictor = make_transition_predictor(
             abstract_state_dim, self.num_actions
@@ -120,14 +129,18 @@ class CRARAgent(nn.Module, AbstractAgent):
     def compute_transition(self, encoded_state, actions):
         # encoded_state = self.encode(obs)
         # TODO: Decide if use one-hot or not.
-        # print(actions)
         # actions = nn.functional.one_hot(actions, self.num_actions)
-        # print(actions)
-        # print(actions.shape)
         x = torch.cat([encoded_state, actions.float().view(-1, 1)], 1)
         # x = torch.cat([encoded_state, actions.float()], 1)
-        # print(x)
         return self.transition_predictor(x)
+
+    def compute_reward(self, encoded_state, actions):
+        # encoded_state = self.encode(obs)
+        # TODO: Decide if use one-hot or not.
+        # actions = nn.functional.one_hot(actions, self.num_actions)
+        x = torch.cat([encoded_state, actions.float().view(-1, 1)], 1)
+        # x = torch.cat([encoded_state, actions.float()], 1)
+        return self.reward_predictor(x)
 
     # @torch.no_grad()
     def act(self, obs, eps):
@@ -139,3 +152,4 @@ class CRARAgent(nn.Module, AbstractAgent):
     def synchronize_networks(self):
         if self.double_learning:
             synchronize_target_model(self.current_qnet, self.target_qnet)
+            synchronize_target_model(self.encoder, self.target_encoder)

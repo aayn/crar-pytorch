@@ -8,25 +8,25 @@ class TestDisambiguation:
         a, b = torch.tensor([[0.0]]), torch.tensor([[0.0]])
         expected = torch.exp(-5.0 * torch.tensor([[1e-3]]))
         actual = compute_disambiguation(a, b)
-        assert torch.isclose(expected, actual)
+        assert torch.isclose(expected.float(), actual.float())
 
     def test_with_zero_2d(self):
         a, b = torch.tensor([[0.0, 0.0]]), torch.tensor([[0.0, 0.0]])
         expected = torch.exp(-5.0 * torch.tensor([[1e-3]]))
         actual = compute_disambiguation(a, b)
-        assert torch.isclose(expected, actual)
+        assert torch.isclose(expected.float(), actual.float())
 
     def test_with_constant_difference(self):
         a, b = torch.tensor([[0.0]]), torch.tensor([[2.0]])
         expected = torch.exp(-5.0 * torch.tensor([[2.0]]))
         actual = compute_disambiguation(a, b)
-        assert torch.isclose(expected, actual)
+        assert torch.isclose(expected.float(), actual.float())
 
     def test_large_value(self):
         a, b = torch.tensor([[0.0]]), torch.tensor([[100.0]])
         expected = torch.exp(-5.0 * torch.tensor([[np.sqrt(10.0)]]))
         actual = compute_disambiguation(a, b)
-        assert torch.isclose(expected, actual)
+        assert torch.isclose(expected.float(), actual.float())
 
     def test_2d_tensor(self):
         a = np.array([[0.0, 1.0], [1.0, 0.0], [1.0, 1.0]])
@@ -37,4 +37,4 @@ class TestDisambiguation:
 
         a, b = torch.tensor(a), torch.tensor(b)
         actual = compute_disambiguation(a, b)
-        assert torch.isclose(expected, actual)
+        assert torch.isclose(expected.float(), actual.float())

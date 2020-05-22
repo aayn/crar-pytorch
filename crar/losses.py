@@ -26,14 +26,15 @@ def compute_mf_loss(agent, batch, hparams=None):
         agent.get_value(encoded_states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
     )
 
-    with torch.no_grad():
-        next_state_values = agent.get_value(
-            agent.encode(next_states, from_current=False), from_current=False
-        ).max(1)[0]
-        next_state_values[dones] = 0.0
-        next_state_values = next_state_values.detach()
+    # with torch.no_grad():
+    next_state_values = agent.get_value(
+        agent.encode(next_states, from_current=False), from_current=False
+    )
+    next_state_values = next_state_values.max(1)[0]
+    next_state_values[dones] = 0.0
+    # next_state_values = next_state_values
 
-    expected_state_action_values = next_state_values * hparams.gamma + rewards
+    expected_state_action_values = rewards + next_state_values * hparams.gamma
 
     return nn.MSELoss()(state_action_values, expected_state_action_values)
 
@@ -45,6 +46,15 @@ def compute_trans_loss(agent, encoded_batch, hparams=None):
     predicted_next_states = agent.compute_transition(encoded_states, actions)
 
     return nn.MSELoss()(predicted_next_states, encoded_next_states)
+
+
+def compute_reward_loss(agent, encoded_batch, hparams=None):
+    """Computes the loss for the transition model."""
+
+    encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
+    predicted_rewards = agent.compute_reward(encoded_states, actions)
+
+    return nn.MSELoss()(predicted_rewards, rewards)
 
 
 def compute_ld1_loss(agent, replay_buffer, hparams=None, device="cpu"):
@@ -65,7 +75,7 @@ def compute_ld1_prime_loss(encoded_batch, hparams=None):
 
     encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
 
-    beta = 0.2
+    beta = 0.05
     ld1_ = compute_disambiguation(encoded_states, encoded_next_states)
     return beta * ld1_
 

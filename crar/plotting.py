@@ -167,3 +167,103 @@ def plot_maze_abstract_transitions(
     ax.add_artist(anchored_box)
     plot_dir.mkdir(parents=True, exist_ok=True)
     plt.savefig(plot_dir / f"plot_{global_step}.pdf")
+
+
+def plot_simple_abstract_space(global_step, model, plot_dir):
+    if not isinstance(plot_dir, Path):
+        plot_dir = Path(plot_dir)
+
+    exp_seq = list(reversed(most_recent(model.replay_buffer.buffer, 1000)))
+    history = []
+    for i, (obs, *_) in enumerate(exp_seq):
+        history.append(obs)
+    history = np.array(history)
+    print(history.shape)
+
+    abstract_states = model.agent.encode(history)
+    m = cm.ScalarMappable(cmap=cm.jet)
+    x, y = abstract_states.detach().cpu().numpy().T
+    # print(x)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_xlabel(r"$X_1$")
+    ax.set_ylabel(r"$X_2$")
+
+    n = 1000
+
+    for i in range(n - 1):
+        predicted1 = (
+            model.agent.compute_transition(
+                abstract_states[i : i + 1], torch.as_tensor([0], device="cuda")
+            )
+            .detach()
+            .cpu()
+            .numpy()
+        )
+
+        # print(f"predicted1 = {predicted1}")
+
+        predicted2 = (
+            (
+                model.agent.compute_transition(
+                    abstract_states[i : i + 1], torch.as_tensor([1], device="cuda")
+                )
+            )
+            .detach()
+            .cpu()
+            .numpy()
+        )
+
+        # predicted3 = (
+        #     (
+        #         model.agent.compute_transition(
+        #             abstract_states[i : i + 1], torch.as_tensor([2], device="cuda")
+        #         )
+        #     )
+        #     .detach()
+        #     .cpu()
+        #     .numpy()
+        # )
+
+        # predicted4 = (
+        #     (
+        #         model.agent.compute_transition(
+        #             abstract_states[i : i + 1], torch.as_tensor([3], device="cuda")
+        #         )
+        #     )
+        #     .detach()
+        #     .cpu()
+        #     .numpy()
+        # )
+
+        ax.plot(
+            np.concatenate([x[i : i + 1], predicted1[0, :1]]),
+            np.concatenate([y[i : i + 1], predicted1[0, 1:2]]),
+            color="royalblue",
+            alpha=0.75,
+        )
+
+        ax.plot(
+            np.concatenate([x[i : i + 1], predicted2[0, :1]]),
+            np.concatenate([y[i : i + 1], predicted2[0, 1:2]]),
+            color="crimson",
+            alpha=0.75,
+        )
+
+        # ax.plot(
+        #     np.concatenate([x[i : i + 1], predicted3[0, :1]]),
+        #     np.concatenate([y[i : i + 1], predicted3[0, 1:2]]),
+        #     color="mediumspringgreen",
+        #     alpha=0.75,
+        # )
+
+        # ax.plot(
+        #     np.concatenate([x[i : i + 1], predicted4[0, :1]]),
+        #     np.concatenate([y[i : i + 1], predicted4[0, 1:2]]),
+        #     color="black",
+        #     alpha=0.75,
+        # )
+
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    plt.savefig(plot_dir / f"plot_{global_step}.pdf")

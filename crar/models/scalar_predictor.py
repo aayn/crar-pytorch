@@ -6,7 +6,7 @@ import torch.nn as nn
 from itertools import accumulate
 
 
-class RewardPredictor(nn.Module):
+class ScalarPredictor(nn.Module):
     def __init__(self, abstract_state_dim, num_actions, fc):
         super().__init__()
         self.fc = fc

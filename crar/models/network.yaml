@@ -1,4 +1,4 @@
-act: &act tanh
+act: &act Tanh
 none: &none !!python/none None
 
 my-convs: &my-convs
@@ -33,8 +33,6 @@ crar-fc: &crar-fc
 simple-q-fc: &simple-q-fc
   - [Linear, auto, 128]
   - *act
-  - [Linear, 128, 128]
-  - *act
   - [Linear, 128, auto]
 
 crar-q-fc: &crar-q-fc
@@ -65,17 +63,23 @@ crar-float-fc: &crar-float-fc
   - *act
   - [Linear, 20, 1]
 
+linear-pass-through: &linear-pass-through
+  - *act
+  - [Linear, auto, auto]
 
 encoder:
-  convs: *crar-convs
-  fc: *crar-fc
+  convs: *none
+  fc: *simple-q-fc
 
 qnet:
   convs: *none
-  fc: *crar-q-fc
+  fc: *linear-pass-through
 
 trans-pred:
   fc: *crar-trans-pred-fc
 
 reward-pred:
+  fc: *crar-float-fc
+
+discount-pred:
   fc: *crar-float-fc

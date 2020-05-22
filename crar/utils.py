@@ -16,6 +16,15 @@ def nonthrowing_issubclass(cl1, cl2) -> bool:
     return False
 
 
+def compute_eps(current_frame, eps_start=1.0, eps_end=0.0, eps_last_frame=float("inf")):
+    eps = eps_end + (eps_start - eps_end) * np.exp(
+        -1.0 * current_frame / eps_last_frame
+    )
+
+    # max(eps_end, eps_start - (current_frame / eps_last_frame))
+    return eps
+
+
 # class ReplayBuffer:
 #     def __init__(self, buffer_size):
 #         self.buffer = deque(maxlen=buffer_size)

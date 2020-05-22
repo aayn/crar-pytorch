@@ -5,21 +5,24 @@ CartPole-v0:
   abstract_state_dim: 2
   optimizer:
     name: Adam
-    params: {lr: !!python/float 0.005}
+    params: {lr: !!python/float 0.01}
+    grad_clip_norm: 1.0
     # qnet_lr: !!python/float 5e-4
     # encoder_lr: !!python/float 5e-4
   gamma: 0.99
-  sync_rate: 20
+  sync_rate: 100
   replay_size: 1000
-  warm_start_size: 4000
-  eps_last_frame: 400
+  warm_start_size: 1000
+  eps_last_frame: 1000
   eps_start: 1.0
   eps_end: 0.01
   episode_length: 200
   max_episode_reward: 200
   is_atari: False
   is_custom: False
+  replace: True
   logger_dir: cartpole
+  plot_dir: /home/aayn/Programming/yarl/plots/cartpole
 
 PongNoFrameskip-v4:
   env: PongNoFrameskip-v4
@@ -42,6 +45,7 @@ PongNoFrameskip-v4:
   max_episode_reward: 21
   is_atari: True
   is_custom: False
+  replace: True
   logger_dir: pong
 
 SimpleMaze:
@@ -67,5 +71,6 @@ SimpleMaze:
   max_episode_reward: 0
   is_atari: False
   is_custom: True
+  replace: True
   logger_dir: simple_maze
   plot_dir: /home/aayn/Programming/yarl/plots/test_plots16_interp

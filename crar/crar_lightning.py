@@ -15,8 +15,8 @@ from crar.wrappers import make_atari, wrap_deepmind, wrap_pytorch
 from crar.agent import CRARAgent
 from crar.data import ReplayBuffer, Experience, ExperienceDataset
 from crar.environments import SimpleMaze
-from crar.plotting import plot_maze_abstract_transitions
-from crar.utils import nonthrowing_issubclass
+from crar.plotting import plot_maze_abstract_transitions, plot_simple_abstract_space
+from crar.utils import nonthrowing_issubclass, compute_eps
 from crar.losses import (
     compute_mf_loss,
     compute_trans_loss,
@@ -24,6 +24,7 @@ from crar.losses import (
     compute_ld1_prime_loss,
     compute_ld2_loss,
     compute_interp_loss,
+    compute_reward_loss,
 )
 
 
@@ -64,6 +65,8 @@ class CRARLightning(pl.LightningModule):
             abstract_state_dim=self.hparams.abstract_state_dim,
         )
 
+        print(self.agent)
+
         # direction along which to align action 2 transitions
         self.interp_vector = torch.tensor([[-1.0, 0]], device=self.device)
 
@@ -76,18 +79,21 @@ class CRARLightning(pl.LightningModule):
         self.state = self.env.reset()
 
     @torch.no_grad()
-    def play_step(self):
-        eps = 1.0
-        # eps = max(
-        #     self.hparams.eps_end,
-        #     self.hparams.eps_start - self.global_step + 1 / self.hparams.eps_last_frame,
-        # )
+    def play_step(self, eps=None):
+        if eps is None:
+            eps = compute_eps(
+                self.global_step,
+                self.hparams.eps_start,
+                self.hparams.eps_end,
+                self.hparams.eps_last_frame,
+            )
+        print(eps)
         action = self.agent.act(np.expand_dims(self.state, 0), eps)
         next_state, reward, done, _ = self.env.step(action)
         exp = Experience(self.state, action, reward, done, next_state)
         self.replay_buffer.push(exp)
         self.state = next_state
-        if done or (self.global_step + 1) % 500 == 0:
+        if done or (self.hparams.is_custom and (self.global_step + 1) % 500 == 0):
             self.reset()
         return reward, done
 
@@ -111,7 +117,6 @@ class CRARLightning(pl.LightningModule):
 
         # DQ optimizer
         if optimizer_idx == 0:
-            # print(optimizer_idx)
             if self.global_step % self.hparams.sync_rate == 0:
                 self.agent.synchronize_networks()
 
@@ -131,10 +136,21 @@ class CRARLightning(pl.LightningModule):
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 mf_loss = mf_loss.unsqueeze(0)
 
-            tqdm_dict = {"mf_loss": mf_loss}
-            output = OrderedDict(
-                {"loss": mf_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
-            )
+            if self.hparams.is_custom:
+                tqdm_dict = {"mf_loss": mf_loss}
+                output = OrderedDict(
+                    {"loss": mf_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
+                )
+            else:
+                tqdm_dict = {"episode_return": self.total_reward, "mf_loss": mf_loss}
+                output = OrderedDict(
+                    {
+                        "episode_return": self.total_reward,
+                        "loss": mf_loss,
+                        "progress_bar": tqdm_dict,
+                        "log": tqdm_dict,
+                    }
+                )
 
         elif optimizer_idx == 1:
             ld1_loss = compute_ld1_loss(
@@ -149,9 +165,13 @@ class CRARLightning(pl.LightningModule):
             )
 
         elif optimizer_idx == 2:
-            ld2_loss = compute_ld2_loss(
-                self.agent, self.replay_buffer, self.hparams, self.device
+            ld2_loss = (
+                compute_ld2_loss(
+                    self.agent, self.replay_buffer, self.hparams, self.device
+                )
+                * 0.0
             )
+
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 ld2_loss = ld2_loss.unsqueeze(0)
 
@@ -176,20 +196,37 @@ class CRARLightning(pl.LightningModule):
                 transition_loss = transition_loss.unsqueeze(0)
 
             tqdm_dict = {"transition_loss": transition_loss}
-            output = OrderedDict(
-                {"loss": transition_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
-            )
+            output = {
+                "loss": transition_loss,
+                "progress_bar": tqdm_dict,
+                "log": tqdm_dict,
+            }
         elif optimizer_idx == 5:
-            interp_loss = compute_interp_loss(
-                self.agent, encoded_batch, self.interp_vector, self.hparams, self.device
-            )
+            interp_loss = torch.tensor([[0]])
+            #  (
+            #     compute_interp_loss(
+            #         self.agent,
+            #         encoded_batch,
+            #         self.interp_vector,
+            #         self.hparams,
+            #         self.device,
+            #     )
+
+            # )
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 interp_loss = interp_loss.unsqueeze(0)
 
             tqdm_dict = {"interp_loss": interp_loss}
-            output = OrderedDict(
-                {"loss": interp_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
-            )
+            output = {"loss": interp_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
+
+        elif optimizer_idx == 6:
+            reward_loss = compute_reward_loss(self.agent, encoded_batch)
+
+            if self.trainer.use_dp or self.trainer.use_ddp2:
+                reward_loss = reward_loss.unsqueeze(0)
+
+            tqdm_dict = {"reward_loss": reward_loss}
+            output = {"loss": reward_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
 
         return output
 
@@ -204,6 +241,17 @@ class CRARLightning(pl.LightningModule):
                 self.global_step,
                 self.hparams.plot_dir,
             )
+        else:
+            if (self.global_step + 1) % 800 == 0:
+                plot_simple_abstract_space(
+                    self.global_step, self, self.hparams.plot_dir
+                )
+            # episode_reward, done = 0, False
+            # self.reset()
+            # while not done:
+            #     reward, done = self.play_step(eps=0.0)
+            #     episode_reward += reward
+            # return {"episode_reward": episode_reward}
 
     def optimizer_step(
         self, current_epoch, batch_nb, optimizer, optimizer_i, second_order_closure=None
@@ -244,12 +292,26 @@ class CRARLightning(pl.LightningModule):
             lr=self.hparams.optimizer.params["lr"] / 2.0,
         )
 
-        dq_sched = optim.lr_scheduler.ExponentialLR(dq_optimizer, 0.97)
-        repr_sched1 = optim.lr_scheduler.ExponentialLR(representation_optimizer1, 0.97)
-        repr_sched2 = optim.lr_scheduler.ExponentialLR(representation_optimizer2, 0.97)
-        repr_sched3 = optim.lr_scheduler.ExponentialLR(representation_optimizer3, 0.97)
-        trans_sched = optim.lr_scheduler.ExponentialLR(transition_optimizer, 0.97)
-        interp_sched = optim.lr_scheduler.ExponentialLR(interp_optimizer, 0.97)
+        reward_optimizer = self.optimizer(
+            list(self.agent.encoder.parameters())
+            + list(self.agent.reward_predictor.parameters()),
+            **self.hparams.optimizer.params,
+        )
+
+        discount_optimizer = self.optimizer(
+            list(self.agent.encoder.parameters())
+            + list(self.agent.discount_predictor.parameters()),
+            **self.hparams.optimizer.params,
+        )
+
+        dq_sched = optim.lr_scheduler.ExponentialLR(dq_optimizer, 0.9)
+        repr_sched1 = optim.lr_scheduler.ExponentialLR(representation_optimizer1, 0.9)
+        repr_sched2 = optim.lr_scheduler.ExponentialLR(representation_optimizer2, 0.9)
+        repr_sched3 = optim.lr_scheduler.ExponentialLR(representation_optimizer3, 0.9)
+        trans_sched = optim.lr_scheduler.ExponentialLR(transition_optimizer, 0.9)
+        interp_sched = optim.lr_scheduler.ExponentialLR(interp_optimizer, 0.9)
+        reward_sched = optim.lr_scheduler.ExponentialLR(reward_optimizer, 0.9)
+        discount_sched = optim.lr_scheduler.ExponentialLR(discount_optimizer, 0.9)
 
         return (
             [
@@ -259,6 +321,7 @@ class CRARLightning(pl.LightningModule):
                 representation_optimizer3,
                 transition_optimizer,
                 interp_optimizer,
+                reward_optimizer,
             ],
             [
                 dq_sched,
@@ -267,6 +330,7 @@ class CRARLightning(pl.LightningModule):
                 repr_sched3,
                 trans_sched,
                 interp_sched,
+                reward_sched,
             ],
         )
 
@@ -275,7 +339,7 @@ class CRARLightning(pl.LightningModule):
         dataset = ExperienceDataset(
             self.replay_buffer,
             self.hparams.episode_length * self.hparams.batch_size,
-            replace=True,
+            replace=self.hparams.replace,
         )
         dataloader = DataLoader(dataset=dataset, batch_size=self.hparams.batch_size)
         return dataloader

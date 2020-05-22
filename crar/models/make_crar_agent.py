@@ -1,17 +1,15 @@
+import inspect
 import yaml
 import torch
 import torch.nn as nn
 from .encoder import Encoder
 from .qnet import QNetwork
 from .transition_predictor import TransitionPredictor
-from .reward_predictor import RewardPredictor
+from .scalar_predictor import ScalarPredictor
+from crar.utils import nonthrowing_issubclass
 
 NN_MAP = {
-    "Conv2d": nn.Conv2d,
-    "MaxPool2d": nn.MaxPool2d,
-    "tanh": nn.Tanh,
-    "Linear": nn.Linear,
-    "relu": nn.ReLU,
+    k: v for k, v in inspect.getmembers(nn) if nonthrowing_issubclass(v, nn.Module)
 }
 
 
@@ -40,7 +38,9 @@ def make_fc(input_dim, out_dim, fc_config):
     fc = []
     for i, layer in enumerate(fc_config):
         if layer[0] == "Linear":
-            if layer[1] == "auto":
+            if layer[1] == "auto" and layer[2] == "auto":
+                fc.append(NN_MAP[layer[0]](input_dim, out_dim))
+            elif layer[1] == "auto":
                 fc.append(NN_MAP[layer[0]](input_dim, layer[2]))
             elif layer[2] == "auto":
                 fc.append(NN_MAP[layer[0]](layer[1], out_dim))
@@ -62,15 +62,27 @@ def make_transition_predictor(abstract_dim, num_actions):
     return transition_predictor
 
 
-def make_reward_predictor(abstract_dim, num_actions):
+def make_scalar_predictor(config_name, abstract_dim, num_actions):
     with open("crar/models/network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-    rp_config = config["reward-pred"]
+    rp_config = config[config_name]
     # fc = make_fc(abstract_dim + num_actions, abstract_dim, rp_config["fc"])
     fc = make_fc(abstract_dim + 1, abstract_dim, rp_config["fc"])
 
-    reward_predictor = RewardPredictor(abstract_dim, num_actions, fc)
+    scalar_predictor = ScalarPredictor(abstract_dim, num_actions, fc)
+    return scalar_predictor
+
+
+def make_reward_predictor(abstract_dim, num_actions):
+    reward_predictor = make_scalar_predictor("reward-pred", abstract_dim, num_actions)
     return reward_predictor
+
+
+def make_discount_predictor(abstract_dim, num_actions):
+    discount_predictor = make_scalar_predictor(
+        "discount-pred", abstract_dim, num_actions
+    )
+    return discount_predictor
 
 
 def make_encoder(input_shape, abstract_dim, device) -> Encoder:
