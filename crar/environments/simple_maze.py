@@ -1,6 +1,8 @@
 """Replication of https://github.com/VinF/deer/blob/master/examples/test_CRAR/simple_maze_env.py.
 """
-
+import copy
+import gym
+import numpy as np
 import matplotlib
 
 # matplotlib.use('agg')
@@ -12,9 +14,6 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, DrawingArea, HPacker
-import copy
-import gym
-import numpy as np
 
 
 class SimpleMaze(gym.Env):
@@ -30,6 +29,8 @@ class SimpleMaze(gym.Env):
         self._higher_dim_obs = kwargs["higher_dim_obs"]
         self.create_map()
         self.intern_dim = 2
+        # Need to set this in order for it to work with OpenAI Gym
+        self._gym_disable_underscore_compat = True
 
     def create_map(self):
         self._map = np.zeros((self._size_maze, self._size_maze))
@@ -49,7 +50,6 @@ class SimpleMaze(gym.Env):
         # Setting the starting position of the agent
         self._pos_agent = [self._size_maze // 2, self._size_maze // 2]
         return self.observe()
-        # return [1 * [self._size_maze * [self._size_maze * [0]]]]
 
     def step(self, action):
         self._cur_action = action
