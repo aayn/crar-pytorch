@@ -41,20 +41,12 @@ class CRARLightning(pl.LightningModule):
         self.hparams = hparams
         if hparams.is_atari:
             self.env = wrap_pytorch(wrap_deepmind(make_atari(hparams.env)))
-        # TODO: Register my environment with gym
-        elif hparams.is_custom:
-            self.env = SimpleMaze(higher_dim_obs=True)
         else:
             self.env = gym.make(hparams.env)
 
-        print(self.env)
-
         self.optimizer = OPTIMIZERS[self.hparams.optimizer.name]
-
         self.reset()
-
         self.device = self.get_device()
-
         self.replay_buffer = ReplayBuffer(self.hparams.replay_size)
 
         self.agent = CRARAgent(
@@ -74,7 +66,6 @@ class CRARLightning(pl.LightningModule):
 
         self.total_reward = 0
         self.episode_reward = 0
-        # self.latest_loss = None
         self.populate(hparams.warm_start_size)
 
     def reset(self):
