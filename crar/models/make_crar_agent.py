@@ -1,5 +1,6 @@
 import inspect
 import yaml
+from pathlib import Path
 import torch
 import torch.nn as nn
 from .encoder import Encoder
@@ -11,6 +12,7 @@ from crar.utils import nonthrowing_issubclass
 NN_MAP = {
     k: v for k, v in inspect.getmembers(nn) if nonthrowing_issubclass(v, nn.Module)
 }
+HERE = Path(__file__).parent
 
 
 def compute_feature_size(input_shape, convs):
@@ -34,7 +36,6 @@ def make_convs(input_shape, conv_config):
 
 
 def make_fc(input_dim, out_dim, fc_config):
-    print(fc_config)
     fc = []
     for i, layer in enumerate(fc_config):
         if layer[0] == "Linear":
@@ -53,7 +54,7 @@ def make_fc(input_dim, out_dim, fc_config):
 
 
 def make_transition_predictor(abstract_dim, num_actions):
-    with open("crar/models/network.yaml") as f:
+    with open(HERE / "network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     tp_config = config["trans-pred"]
     # fc = make_fc(abstract_dim + num_actions, abstract_dim, tp_config["fc"])
@@ -63,7 +64,7 @@ def make_transition_predictor(abstract_dim, num_actions):
 
 
 def make_scalar_predictor(config_name, abstract_dim, num_actions):
-    with open("crar/models/network.yaml") as f:
+    with open(HERE / "network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     rp_config = config[config_name]
     # fc = make_fc(abstract_dim + num_actions, abstract_dim, rp_config["fc"])
@@ -86,7 +87,7 @@ def make_discount_predictor(abstract_dim, num_actions):
 
 
 def make_encoder(input_shape, abstract_dim, device) -> Encoder:
-    with open("crar/models/network.yaml") as f:
+    with open(HERE / "network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     encoder_config = config["encoder"]
 
@@ -101,7 +102,7 @@ def make_encoder(input_shape, abstract_dim, device) -> Encoder:
 
 
 def make_qnet(input_dim, num_actions, device) -> QNetwork:
-    with open("crar/models/network.yaml") as f:
+    with open(HERE / "network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     qnet_config = config["qnet"]
 

@@ -23,12 +23,22 @@ def compute_mf_loss(agent, batch, hparams=None):
     encoded_states = agent.encode(states)
 
     state_action_values = (
-        agent.get_value(encoded_states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
+        agent.get_value(encoded_states, depth=hparams.planning_depth)
+        .gather(1, actions.unsqueeze(-1))
+        .squeeze(-1)
     )
+    # state_action_values = (
+    #     agent.get_value(encoded_states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
+    # )
 
     # with torch.no_grad():
+    # next_state_values = agent.get_value(
+    #     agent.encode(next_states, from_current=False), from_current=False
+    # )
     next_state_values = agent.get_value(
-        agent.encode(next_states, from_current=False), from_current=False
+        agent.encode(next_states, from_current=False),
+        depth=hparams.planning_depth,
+        from_current=False,
     )
     next_state_values = next_state_values.max(1)[0]
     next_state_values[dones] = 0.0
@@ -53,7 +63,7 @@ def compute_reward_loss(agent, encoded_batch, hparams=None):
 
     encoded_states, actions, rewards, dones, encoded_next_states = encoded_batch
     predicted_rewards = agent.compute_reward(encoded_states, actions)
-
+    rewards = rewards.view(-1, 1)
     return nn.MSELoss()(predicted_rewards, rewards)
 
 
