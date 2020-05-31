@@ -1,4 +1,5 @@
-"""Replication of https://github.com/VinF/deer/blob/master/examples/test_CRAR/simple_maze_env.py.
+"""Replication of
+    https://github.com/VinF/deer/blob/master/examples/test_CRAR/simple_maze_env.py.
 """
 import copy
 import gym
@@ -90,12 +91,13 @@ class SimpleMaze(gym.Env):
         return [obs]
 
     def get_higher_dim_obs(self, indices_agent, indices_reward):
-        """ Obtain the high-dimensional observation from indices of the agent position and the indices of the reward positions.
+        """
+        Converts underlying simple maze to higher-dimensional observation.
         """
         obs = copy.deepcopy(self._map)
         obs = obs / 1.0
         obs = np.repeat(np.repeat(obs, 6, axis=0), 6, axis=1)
-        # agent repr
+        # Agent representation
         agent_obs = np.zeros((6, 6))
         agent_obs[0, 2] = 0.5
         agent_obs[1, 0:5] = 0.6
@@ -106,7 +108,7 @@ class SimpleMaze(gym.Env):
         agent_obs[5, 0:2] = 0.6
         agent_obs[5, 3:5] = 0.6
 
-        # reward repr
+        # Reward representation
         reward_obs = np.zeros((6, 6))
         if self._has_goal:
             reward_obs[:3, 1] = 0.95
@@ -120,11 +122,12 @@ class SimpleMaze(gym.Env):
         for i in indices_agent:
             obs[i[0] * 6 : (i[0] + 1) * 6 :, i[1] * 6 : (i[1] + 1) * 6] = agent_obs
 
-        # plt.imshow(obs, cmap='gray_r')
-        # plt.show()
         return obs
 
     def all_possible_inputs(self):
+        """
+        Returns an array of states with all possible agent positions.
+        """
         all_possib_inp = []
         self.create_map()
         for y_a in range(self._size_maze):
