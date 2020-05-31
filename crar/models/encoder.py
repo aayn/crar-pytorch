@@ -22,22 +22,3 @@ class Encoder(nn.Module):
             x = x.view(x.size(0), -1)
         x = self.fc(x.float())
         return x
-
-
-class SimpleEncoder(nn.Module):
-    """Encoder for the CartPole-v0 environment for rapid testing."""
-
-    def __init__(self, input_shape, device, act, abstract_state_dim=5):
-        super().__init__()
-        self.device = device
-        self.fc = nn.Sequential(
-            nn.Linear(input_shape[0], 20),
-            nn.Tanh(),
-            nn.Linear(20, 20),
-            nn.Tanh(),
-            nn.Linear(20, abstract_state_dim),
-        )
-
-    def forward(self, x):
-        x = self.fc(torch.as_tensor(x, device=self.device).float())
-        return x

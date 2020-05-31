@@ -56,7 +56,7 @@ class CRARAgent(nn.Module, AbstractAgent):
         self.num_actions = env.action_space.n
         self.discount_factor = discount_factor
         self.double_learning = double_learning
-        # TODO: Use if image space to determine if to use Conv or not
+        # TODO: Use image space to determine if to use Conv or not
         self.image_space = len(env.observation_space.shape) > 1
         self.branching_factor = branching_factor
 
@@ -64,22 +64,7 @@ class CRARAgent(nn.Module, AbstractAgent):
             env.observation_space.shape, abstract_state_dim, device
         )
 
-        # Observation consists of joint values
-        # if not self.image_space:
-        #     self.encoder = SimpleEncoder(
-        #         env.observation_space.shape, device, encoder_act, abstract_state_dim
-        #     )
-        # # Observation is an image
-        # else:
-        #     self.encoder = make_encoder(
-        #         env.observation_space.shape, abstract_state_dim, device
-        #     )
-        #     # Encoder(
-        #     #     env.observation_space.shape, device, encoder_act, abstract_state_dim
-        #     # )
-
         self.current_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)
-        # SimpleQNetwork(abstract_state_dim, env.action_space.n, device, qnet_act)
 
         self.encoder.to(self.device)
         self.current_qnet.to(self.device)
@@ -96,21 +81,16 @@ class CRARAgent(nn.Module, AbstractAgent):
         self.reward_predictor = make_reward_predictor(
             abstract_state_dim, self.num_actions
         )
-        # RewardPredictor(abstract_state_dim, rp_act)
         self.reward_predictor.to(self.device)
 
         self.discount_predictor = make_discount_predictor(
             abstract_state_dim, self.num_actions
         )
-        # RewardPredictor(abstract_state_dim, rp_act)
         self.discount_predictor.to(self.device)
 
         self.transition_predictor = make_transition_predictor(
             abstract_state_dim, self.num_actions
         )
-        # TransitionPredictor(
-        #     abstract_state_dim, self.num_actions
-        # )
         self.transition_predictor.to(device)
         self.prev_obs = None
 
@@ -129,11 +109,6 @@ class CRARAgent(nn.Module, AbstractAgent):
         network = self.current_qnet if from_current else self.target_qnet
         if depth == 0:
             return network.get_value(encoded_state)
-            # return (
-            #     self.current_qnet.get_value(encoded_state)
-            #     if from_current
-            #     else self.target_qnet.get_value(encoded_state)
-            # )
 
         q_plan_values = []
         for a in range(self.num_actions):
@@ -143,8 +118,8 @@ class CRARAgent(nn.Module, AbstractAgent):
             discounts = torch.tensor(
                 [self.discount_factor] * rewards.shape[0], device=self.device
             )
-
             # discounts = self.compute_discount(encoded_state, actions)
+
             next_encoded_states = self.compute_transition(encoded_state, actions)
             q_plan_values.append(
                 rewards
@@ -156,27 +131,15 @@ class CRARAgent(nn.Module, AbstractAgent):
         return torch.cat(q_plan_values, dim=1)
 
     def compute_transition(self, encoded_state, actions):
-        # encoded_state = self.encode(obs)
-        # TODO: Decide if use one-hot or not.
-        # actions = nn.functional.one_hot(actions, self.num_actions)
         x = torch.cat([encoded_state, actions.float().view(-1, 1)], 1)
-        # x = torch.cat([encoded_state, actions.float()], 1)
         return self.transition_predictor(x)
 
     def compute_reward(self, encoded_state, actions):
-        # encoded_state = self.encode(obs)
-        # TODO: Decide if use one-hot or not.
-        # actions = nn.functional.one_hot(actions, self.num_actions)
         x = torch.cat([encoded_state, actions.float().view(-1, 1)], 1)
-        # x = torch.cat([encoded_state, actions.float()], 1)
         return self.reward_predictor(x)
 
     def compute_discount(self, encoded_state, actions):
-        # encoded_state = self.encode(obs)
-        # TODO: Decide if use one-hot or not.
-        # actions = nn.functional.one_hot(actions, self.num_actions)
         x = torch.cat([encoded_state, actions.float().view(-1, 1)], 1)
-        # x = torch.cat([encoded_state, actions.float()], 1)
         return self.discount_predictor(x)
 
     def act(self, obs, eps, depth=0):
@@ -185,7 +148,6 @@ class CRARAgent(nn.Module, AbstractAgent):
         q_value = self.get_value(self.encode(obs), depth=depth)
         action = torch.argmax(q_value).item()
         return action
-        # return self.current_qnet.act(self.encode(obs))
 
     def synchronize_networks(self):
         if self.double_learning:

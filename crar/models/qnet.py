@@ -35,7 +35,6 @@ class QNetwork(nn.Module, QLearner):
         return self(state)
 
     def act(self, state):
-        # state = torch.as_tensor(state, device=self.device)
         q_value = self(state)
         action = torch.argmax(q_value).item()
         return action
