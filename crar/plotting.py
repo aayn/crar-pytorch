@@ -1,7 +1,8 @@
-import pytorch_lightning as pl
+from typing import Union
+from pathlib import Path
+from collections import deque
 import torch
 import numpy as np
-from crar.environments import SimpleMaze
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
@@ -11,13 +12,12 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, DrawingArea, HPacker
-from typing import Union
-from pathlib import Path
 
 matplotlib.use("qt5agg")
 
 
-def most_recent(buffer, n: Union[None, int] = None):
+def most_recent(buffer: deque, n: Union[None, int] = None):
+    """Returns the most recent sequence of experience from a deque buffer."""
     if n is None:
         return buffer[0]
     buffer_copy, vals = buffer.copy(), []
@@ -30,12 +30,17 @@ def most_recent(buffer, n: Union[None, int] = None):
 def plot_maze_abstract_transitions(
     all_inputs, all_abs_inputs, model, global_step, plot_dir
 ):
+    """Plots the abstract representation from the CRAR agent for the SimpleMaze environment.
+
+    Heavily borrowed from:
+        https://github.com/VinF/deer/blob/master/examples/test_CRAR/simple_maze_env.py
+    """
+
     if not isinstance(plot_dir, Path):
         plot_dir = Path(plot_dir)
 
     exp_seq = list(reversed(most_recent(model.replay_buffer.buffer, 1000)))
 
-    # matplotlib.rcParams["figure.figsize"] = (15, 15)
     n = 1000
     history = []
     for i, (obs, *_) in enumerate(exp_seq):
@@ -46,7 +51,6 @@ def plot_maze_abstract_transitions(
     abstract_states = model.agent.encode(history)
     m = cm.ScalarMappable(cmap=cm.jet)
     x, y = abstract_states.detach().cpu().numpy().T
-    # print(x)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -62,8 +66,6 @@ def plot_maze_abstract_transitions(
             .cpu()
             .numpy()
         )
-
-        # print(f"predicted1 = {predicted1}")
 
         predicted2 = (
             (
@@ -184,7 +186,6 @@ def plot_simple_abstract_space(global_step, model, plot_dir):
     abstract_states = model.agent.encode(history)
     m = cm.ScalarMappable(cmap=cm.jet)
     x, y = abstract_states.detach().cpu().numpy().T
-    # print(x)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -202,8 +203,6 @@ def plot_simple_abstract_space(global_step, model, plot_dir):
             .cpu()
             .numpy()
         )
-
-        # print(f"predicted1 = {predicted1}")
 
         predicted2 = (
             (
