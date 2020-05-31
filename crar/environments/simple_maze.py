@@ -66,9 +66,15 @@ class SimpleMaze(gym.Env):
             if self._map[self._pos_agent[0], self._pos_agent[1] + 1] == 0:
                 self._pos_agent[1] = self._pos_agent[1] + 1
 
+        self.reward = -1.0
+        done = False
+        if self._pos_agent == self._pos_goal:
+            self.reward = 100.0
+            done = True
+
         # There is no reward in this simple environment
-        self.reward = 0
-        return self.observe(), self.reward, False, None
+        # self.reward = 0
+        return self.observe(), self.reward, done, None
 
     def render(self):
         return self.observe()
@@ -102,12 +108,12 @@ class SimpleMaze(gym.Env):
 
         # reward repr
         reward_obs = np.zeros((6, 6))
-        # reward_obs[:,1]=0.8
-        # reward_obs[0,1:4]=0.7
-        # reward_obs[1,3]=0.8
-        # reward_obs[2,1:4]=0.7
-        # reward_obs[4,2]=0.8
-        # reward_obs[5,2:4]=0.8
+        reward_obs[:3, 1] = 0.8
+        reward_obs[0, 1:4] = 0.7
+        reward_obs[1, 1:4] = 0.8
+        reward_obs[2, 1:4] = 0.7
+        # reward_obs[4, 2] = 0.8
+        # reward_obs[5, 2:4] = 0.8
 
         for i in indices_reward:
             obs[i[0] * 6 : (i[0] + 1) * 6 :, i[1] * 6 : (i[1] + 1) * 6] = reward_obs

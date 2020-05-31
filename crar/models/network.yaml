@@ -1,23 +1,23 @@
 act: &act Tanh
-none: &none !!python/none None
+none: !!python/none &none None
 
 my-convs: &my-convs
-  - [Conv2d, auto, 32, {kernel_size: 2}]
+  - [Conv2d, auto, 32, { kernel_size: 2 }]
   - *act
-  - [Conv2d, 32, 64, {kernel_size: 2}]
+  - [Conv2d, 32, 64, { kernel_size: 2 }]
   - *act
-  - [Conv2d, 64, 64, {kernel_size: 3}]
+  - [Conv2d, 64, 64, { kernel_size: 3 }]
   - *act
 
 crar-convs: &crar-convs
-  - [Conv2d, auto, 8, {kernel_size: 2}]
+  - [Conv2d, auto, 8, { kernel_size: 2 }]
   - *act
-  - [Conv2d, 8, 16, {kernel_size: 2}]
+  - [Conv2d, 8, 16, { kernel_size: 2 }]
   - *act
-  - [MaxPool2d, {kernel_size: 2}]
-  - [Conv2d, 16, 32, {kernel_size: 3}]
+  - [MaxPool2d, { kernel_size: 2 }]
+  - [Conv2d, 16, 32, { kernel_size: 3 }]
   - *act
-  - [MaxPool2d, {kernel_size: 3}]
+  - [MaxPool2d, { kernel_size: 3 }]
 
 crar-fc: &crar-fc
   - [Linear, auto, 200]
@@ -36,12 +36,11 @@ simple-q-fc: &simple-q-fc
   - [Linear, 128, auto]
 
 crar-q-fc: &crar-q-fc
-- [Linear, auto, 50]
-- *act
-- [Linear, 50, 20]
-- *act
-- [Linear, 20, auto]
-
+  - [Linear, auto, 50]
+  - *act
+  - [Linear, 50, 20]
+  - *act
+  - [Linear, 20, auto]
 
 crar-trans-pred-fc: &crar-trans-pred-fc
   - [Linear, auto, 10]
@@ -67,8 +66,9 @@ linear-pass-through: &linear-pass-through
   - *act
   - [Linear, auto, auto]
 
+# TODO: Try to make using convs an automatic process
 encoder:
-  convs: *none
+  convs: *crar-convs
   fc: *simple-q-fc
 
 qnet:
