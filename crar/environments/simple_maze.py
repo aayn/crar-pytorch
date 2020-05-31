@@ -1,4 +1,5 @@
-"""Replication of
+"""
+Replication of
     https://github.com/VinF/deer/blob/master/examples/test_CRAR/simple_maze_env.py.
 """
 import copy
