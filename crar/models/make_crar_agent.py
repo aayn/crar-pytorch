@@ -57,7 +57,6 @@ def make_transition_predictor(abstract_dim, num_actions):
     with open(HERE / "network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     tp_config = config["trans-pred"]
-    # fc = make_fc(abstract_dim + num_actions, abstract_dim, tp_config["fc"])
     fc = make_fc(abstract_dim + 1, abstract_dim, tp_config["fc"])
     transition_predictor = TransitionPredictor(abstract_dim, num_actions, fc)
     return transition_predictor
@@ -67,7 +66,6 @@ def make_scalar_predictor(config_name, abstract_dim, num_actions):
     with open(HERE / "network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     rp_config = config[config_name]
-    # fc = make_fc(abstract_dim + num_actions, abstract_dim, rp_config["fc"])
     fc = make_fc(abstract_dim + 1, abstract_dim, rp_config["fc"])
 
     scalar_predictor = ScalarPredictor(abstract_dim, num_actions, fc)
@@ -116,13 +114,13 @@ def make_qnet(input_dim, num_actions, device) -> QNetwork:
     return qnet
 
 
-# def load_network(device, input_shape=(1, 48, 48), abstract_dim=2):
-#     with open("network.yaml") as f:
-#         data = yaml.load(f, Loader=yaml.FullLoader)
-#     encoder = make_encoder(input_shape, abstract_dim, data["encoder"], device)
+if __name__ == "__main__":
+    # Utility to explore and test the YAML network file
+    def load_network(device, input_shape=(1, 48, 48), abstract_dim=2):
+        with open("network.yaml") as f:
+            data = yaml.load(f, Loader=yaml.FullLoader)
+        encoder = make_encoder(input_shape, abstract_dim, data["encoder"], device)
 
-#     return encoder
+        return encoder
 
-
-# if __name__ == "__main__":
-#     load_network()
+    load_network()

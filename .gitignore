@@ -142,3 +142,6 @@ wandb/
 *.pdf
 
 plots/
+yarl-algorithms_crar
+crar/saved_weights
+lightning_dirs/

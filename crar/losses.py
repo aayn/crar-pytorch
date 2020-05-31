@@ -4,6 +4,7 @@ import torch.nn as nn
 
 
 def compute_disambiguation(tensor1, tensor2, Cd=5.0):
+    # TODO: Use torch.norm to clean this
     return torch.exp(
         -Cd
         * torch.sqrt(
@@ -27,14 +28,7 @@ def compute_mf_loss(agent, batch, hparams=None):
         .gather(1, actions.unsqueeze(-1))
         .squeeze(-1)
     )
-    # state_action_values = (
-    #     agent.get_value(encoded_states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
-    # )
 
-    # with torch.no_grad():
-    # next_state_values = agent.get_value(
-    #     agent.encode(next_states, from_current=False), from_current=False
-    # )
     next_state_values = agent.get_value(
         agent.encode(next_states, from_current=False),
         depth=hparams.planning_depth,
@@ -42,7 +36,6 @@ def compute_mf_loss(agent, batch, hparams=None):
     )
     next_state_values = next_state_values.max(1)[0]
     next_state_values[dones] = 0.0
-    # next_state_values = next_state_values
 
     expected_state_action_values = rewards + next_state_values * hparams.gamma
 

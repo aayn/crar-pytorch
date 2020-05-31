@@ -116,7 +116,6 @@ class CRARLightning(pl.LightningModule):
             if self.global_step % self.hparams.sync_rate == 0:
                 self.agent.synchronize_networks()
 
-            # if not self.hparams.is_custom:
             reward, done, eps = self.play_step(store_experience=True)
             self.episode_reward += reward
 
@@ -124,20 +123,11 @@ class CRARLightning(pl.LightningModule):
                 self.total_reward = self.episode_reward
                 self.episode_reward = 0
 
-            # else:
-            #     self.episode_reward = 0
-
             mf_loss = compute_mf_loss(self.agent, batch, self.hparams)
 
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 mf_loss = mf_loss.unsqueeze(0)
 
-            # if self.hparams.is_custom:
-            #     tqdm_dict = {"mf_loss": mf_loss}
-            #     output = OrderedDict(
-            #         {"loss": mf_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
-            #     )
-            # else:
             tqdm_dict = {
                 "episode_return": self.total_reward,
                 "mf_loss": mf_loss,
@@ -247,12 +237,6 @@ class CRARLightning(pl.LightningModule):
                 plot_simple_abstract_space(
                     self.global_step, self, self.hparams.plot_dir
                 )
-            # episode_reward, done = 0, False
-            # self.reset()
-            # while not done:
-            #     reward, done = self.play_step(eps=0.0)
-            #     episode_reward += reward
-            # return {"episode_reward": episode_reward}
 
     def optimizer_step(
         self, current_epoch, batch_nb, optimizer, optimizer_i, second_order_closure=None

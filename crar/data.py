@@ -1,5 +1,7 @@
-# Credits: https://colab.research.google.com/drive/1F_RNcHzTfFuQf-LeKvSlud6x7jXYkG31#scrollTo=NWvMLBDySQI5
-
+"""
+Inspired by:
+    https://colab.research.google.com/drive/1F_RNcHzTfFuQf-LeKvSlud6x7jXYkG31
+"""
 from collections import namedtuple, deque
 from typing import Tuple, Union
 import numpy as np
@@ -12,7 +14,7 @@ Experience = namedtuple(
 
 
 class ReplayBuffer:
-    """Replay buffer to learn from past experience.
+    """Replay buffer to store past experience.
 
     Args:
         capacity: size of buffer

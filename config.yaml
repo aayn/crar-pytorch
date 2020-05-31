@@ -22,7 +22,7 @@ CartPole-v0:
   is_atari: False
   is_custom: False
   replace: True
-  logger_dir: cartpole
+  logger_dir: lightning_dirs/cartpole
   plot_dir: /home/aayn/Programming/yarl/plots/cartpole
 
 PongNoFrameskip-v4:
@@ -48,10 +48,10 @@ PongNoFrameskip-v4:
   is_atari: True
   is_custom: False
   replace: True
-  logger_dir: pong
+  logger_dir: lightning_dirs/pong
 
-SimpleMaze:
-  env: SimpleMaze
+SimpleMaze-v0:
+  env: SimpleMaze-v0
   max_epochs: 500
   batch_size: 32
   abstract_state_dim: 2
@@ -77,5 +77,35 @@ SimpleMaze:
   is_atari: False
   is_custom: True
   replace: True
-  logger_dir: simple_maze
+  logger_dir: lightning_dirs/simple_mazev0
+  plot_dir: /home/aayn/Programming/yarl/plots/test_goal_plots18_planning2_interp
+
+SimpleMaze-v1:
+  env: SimpleMaze-v1
+  max_epochs: 500
+  batch_size: 32
+  abstract_state_dim: 2
+  lr: !!python/float 5e-4
+  optimizer:
+    name: RMSprop
+    params: { lr: !!python/float 5e-4 }
+    grad_clip_norm: 1.0
+    # qnet_lr: !!python/float 5e-4
+    # encoder_lr: !!python/float 5e-4
+  gamma: 0.99
+  sync_rate: 1000 # freeze interval
+  replay_size: 5000
+  warm_start_size: 5000
+  # TODO: Fix eps calculation for environment with/without reward
+  eps_last_frame: 10000
+  eps_start: 1.0
+  eps_end: 0.01 # Random actions
+  # End of TODO
+  episode_length: 2000
+  max_episode_reward: 0
+  planning_depth: 2
+  is_atari: False
+  is_custom: True
+  replace: True
+  logger_dir: lightning_dirs/simple_mazev1
   plot_dir: /home/aayn/Programming/yarl/plots/test_goal_plots18_planning2_interp

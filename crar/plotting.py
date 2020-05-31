@@ -172,6 +172,7 @@ def plot_maze_abstract_transitions(
 
 
 def plot_simple_abstract_space(global_step, model, plot_dir):
+    # TODO: Possibly delete this
     return
     if not isinstance(plot_dir, Path):
         plot_dir = Path(plot_dir)
