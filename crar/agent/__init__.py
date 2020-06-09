@@ -1,18 +1,22 @@
-from crar.models import (
-    synchronize_target_model,
+import torch
+import abc
+import numpy as np
+import torch.nn as nn
+import gym
+from .make_networks import (
     make_encoder,
     make_qnet,
     make_transition_predictor,
     make_reward_predictor,
     make_discount_predictor,
 )
-import torch
-import abc
-import numpy as np
-import torch.nn as nn
-import gym
+from crar.experience import ReplayBuffer
 
-from crar.data import ReplayBuffer
+
+def synchronize_target_model(
+    current_model: torch.nn.Module, target_model: torch.nn.Module
+):
+    target_model.load_state_dict(current_model.state_dict())
 
 
 class AbstractAgent(abc.ABC):
@@ -43,9 +47,6 @@ class CRARAgent(nn.Module, AbstractAgent):
         env: gym.Env,
         replay_buffer: ReplayBuffer,
         device: torch.device,
-        encoder_act=nn.Tanh,
-        qnet_act=nn.Tanh,
-        rp_act=nn.Tanh,
         discount_factor: float = 0.95,
         abstract_state_dim: int = 3,
         double_learning: bool = True,
@@ -56,12 +57,15 @@ class CRARAgent(nn.Module, AbstractAgent):
         self.num_actions = env.action_space.n
         self.discount_factor = discount_factor
         self.double_learning = double_learning
-        # TODO: Use image space to determine if to use Conv or not
-        self.image_space = len(env.observation_space.shape) > 1
         self.branching_factor = branching_factor
 
+        print(len(env.observation_space.shape) > 1)
+
         self.encoder = make_encoder(
-            env.observation_space.shape, abstract_state_dim, device
+            env.observation_space.shape,
+            abstract_state_dim,
+            device,
+            image_input=(len(env.observation_space.shape) > 1),
         )
 
         self.current_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)

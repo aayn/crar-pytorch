@@ -23,6 +23,7 @@ class SimpleMaze(gym.Env):
     observation_space = gym.spaces.Space((1, 48, 48), float)
 
     def __init__(self, **kwargs):
+        self.id = kwargs["id"]
         self._mode = -1
         self._size_maze = 8
         self._higher_dim_obs = kwargs["higher_dim_obs"]
@@ -41,6 +42,7 @@ class SimpleMaze(gym.Env):
         self._map[:, self._size_maze // 2] = 1
         self._map[self._size_maze // 2, self._size_maze // 2] = 0
         self._pos_agent = [2, 2]
+        self._pos_goal = None
         if self._has_goal:
             self._pos_goal = [self._size_maze - 2, self._size_maze - 2]
 
@@ -76,7 +78,7 @@ class SimpleMaze(gym.Env):
         else:
             # There is no reward in SimpleMaze-v0
             self.reward = 0
-        return self.observe(), self.reward, done, None
+        return self.observe(), self.reward, done, {}
 
     def render(self):
         return self.observe()
@@ -117,8 +119,9 @@ class SimpleMaze(gym.Env):
             reward_obs[1, 1:4] = 0.95
             reward_obs[2, 1:4] = 0.95
 
-        for i in indices_reward:
-            obs[i[0] * 6 : (i[0] + 1) * 6 :, i[1] * 6 : (i[1] + 1) * 6] = reward_obs
+        if self._has_goal:
+            for i in indices_reward:
+                obs[i[0] * 6 : (i[0] + 1) * 6 :, i[1] * 6 : (i[1] + 1) * 6] = reward_obs
 
         for i in indices_agent:
             obs[i[0] * 6 : (i[0] + 1) * 6 :, i[1] * 6 : (i[1] + 1) * 6] = agent_obs

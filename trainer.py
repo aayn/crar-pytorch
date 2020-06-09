@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from crar.crar_lightning import CRARLightning
+from crar.crar import CRARLightning
 import numpy as np
 import torch
 import argparse
@@ -15,18 +15,16 @@ def main(hparams):
     model = CRARLightning(hparams)
 
     # logger = TensorBoardLogger(save_dir=os.getcwd(), name=hparams.logger_dir)
-    # logger = WandbLogger(name="pong")
-    # logger.watch(model, log="all", log_freq=100)
+    logger = WandbLogger(name=hparams.logger_dir.split("/")[1])
+    logger.watch(model, log="all", log_freq=10)
 
     grad_clip_norm = 0
-    try:
+    if "grad_clip_norm" in hparams:
         grad_clip_norm = hparams.optim.grad_clip_norm
-    except KeyError:
-        pass
 
     trainer = pl.Trainer(
         gpus=1,
-        # logger=logger,
+        logger=logger,
         distributed_backend="dp",
         max_epochs=hparams.max_epochs,
         early_stop_callback=False,
@@ -52,4 +50,5 @@ if __name__ == "__main__":
     args, _ = parser.parse_known_args()
     with open("config.yaml") as f:
         config = Box(yaml.load(f, Loader=yaml.FullLoader)[args.env])
-    main(config)
+    for _ in range(10):
+        main(config)

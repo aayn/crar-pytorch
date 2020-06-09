@@ -1,4 +1,5 @@
 import inspect
+import re
 import pytorch_lightning as pl
 import argparse
 from collections import OrderedDict, deque
@@ -11,10 +12,9 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 import numpy as np
 from box import Box
-from crar.wrappers import make_atari, wrap_deepmind, wrap_pytorch
 from crar.agent import CRARAgent
-from crar.data import ReplayBuffer, Experience, ExperienceDataset
-from crar.environments import SimpleMaze
+from crar.experience import ReplayBuffer, Experience, ExperienceDataset
+from crar.environments import wrap_deepmind, wrap_pytorch, make_atari, TimeLimit
 from crar.plotting import plot_maze_abstract_transitions, plot_simple_abstract_space
 from crar.utils import nonthrowing_issubclass, compute_eps
 from crar.losses import (
@@ -44,6 +44,9 @@ class CRARLightning(pl.LightningModule):
         else:
             self.env = gym.make(hparams.env)
 
+        if "max_episode_length" in self.hparams:
+            self.env = TimeLimit(self.env, self.hparams.max_episode_length)
+
         self.optimizer = OPTIMIZERS[self.hparams.optimizer.name]
         self.reset()
         self.device = self.get_device()
@@ -53,15 +56,12 @@ class CRARLightning(pl.LightningModule):
             self.env,
             self.replay_buffer,
             self.device,
-            encoder_act=nn.Tanh,
-            qnet_act=nn.Tanh,
-            rp_act=nn.Tanh,
             abstract_state_dim=self.hparams.abstract_state_dim,
         )
 
         print(self.agent)
 
-        # direction along which to align action 2 transitions
+        # Direction along which to align action 2 transitions
         self.interp_vector = torch.tensor([[-1.0, 0]], device=self.device)
 
         self.total_reward = 0
@@ -88,15 +88,14 @@ class CRARLightning(pl.LightningModule):
             exp = Experience(self.state, action, reward, done, next_state)
             self.replay_buffer.push(exp)
             self.state = next_state
-        # TODO: Remove reliance on is_custom to reset every 500 steps
-        if done or (self.hparams.is_custom and (self.global_step + 1) % 500 == 0):
+        if done:
             self.reset()
         return reward, done, eps
 
     def populate(self, steps: int = 1000) -> None:
         """Fills up the replay buffer by running for `steps` steps."""
         for _ in range(steps):
-            self.play_step()
+            self.play_step(store_experience=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.agent.get_value(x)
@@ -116,7 +115,9 @@ class CRARLightning(pl.LightningModule):
             if self.global_step % self.hparams.sync_rate == 0:
                 self.agent.synchronize_networks()
 
-            reward, done, eps = self.play_step(store_experience=True)
+            reward, done, eps = self.play_step(
+                store_experience=self.hparams.update_experience
+            )
             self.episode_reward += reward
 
             if done:
@@ -221,22 +222,19 @@ class CRARLightning(pl.LightningModule):
         return output
 
     def on_epoch_end(self):
-        # TODO: Maybe remove reliance on is custom for this plotting
-        if self.hparams.is_custom:
-            all_inputs = self.env.all_possible_inputs()
-            encoded_inputs = self.agent.encode(all_inputs)
-            plot_maze_abstract_transitions(
-                all_inputs,
-                encoded_inputs.detach().cpu().numpy(),
-                self,
-                self.global_step,
-                self.hparams.plot_dir,
-            )
-        else:
-            if (self.global_step + 1) % 800 == 0:
-                plot_simple_abstract_space(
-                    self.global_step, self, self.hparams.plot_dir
+        try:
+            if re.match("SimpleMaze", self.env.id):
+                all_inputs = self.env.all_possible_inputs()
+                encoded_inputs = self.agent.encode(all_inputs)
+                plot_maze_abstract_transitions(
+                    all_inputs,
+                    encoded_inputs.detach().cpu().numpy(),
+                    self,
+                    self.global_step,
+                    self.hparams.plot_dir,
                 )
+        except AttributeError:
+            pass
 
     def optimizer_step(
         self, current_epoch, batch_nb, optimizer, optimizer_i, second_order_closure=None
@@ -300,14 +298,25 @@ class CRARLightning(pl.LightningModule):
         #     **self.hparams.optimizer.params,
         # )
 
-        # TODO: Put decay rate in a config file
-        dq_sched = optim.lr_scheduler.ExponentialLR(dq_optimizer, 0.999)
-        repr_sched1 = optim.lr_scheduler.ExponentialLR(representation_optimizer1, 0.999)
-        repr_sched2 = optim.lr_scheduler.ExponentialLR(representation_optimizer2, 0.999)
-        repr_sched3 = optim.lr_scheduler.ExponentialLR(representation_optimizer3, 0.999)
-        trans_sched = optim.lr_scheduler.ExponentialLR(transition_optimizer, 0.999)
-        interp_sched = optim.lr_scheduler.ExponentialLR(interp_optimizer, 0.999)
-        reward_sched = optim.lr_scheduler.ExponentialLR(reward_optimizer, 0.999)
+        dq_sched = optim.lr_scheduler.ExponentialLR(dq_optimizer, self.hparams.lr_decay)
+        repr_sched1 = optim.lr_scheduler.ExponentialLR(
+            representation_optimizer1, self.hparams.lr_decay
+        )
+        repr_sched2 = optim.lr_scheduler.ExponentialLR(
+            representation_optimizer2, self.hparams.lr_decay
+        )
+        repr_sched3 = optim.lr_scheduler.ExponentialLR(
+            representation_optimizer3, self.hparams.lr_decay
+        )
+        trans_sched = optim.lr_scheduler.ExponentialLR(
+            transition_optimizer, self.hparams.lr_decay
+        )
+        interp_sched = optim.lr_scheduler.ExponentialLR(
+            interp_optimizer, self.hparams.lr_decay
+        )
+        reward_sched = optim.lr_scheduler.ExponentialLR(
+            reward_optimizer, self.hparams.lr_decay
+        )
         # discount_sched = optim.lr_scheduler.ExponentialLR(discount_optimizer, 0.9)
 
         return (
@@ -335,7 +344,7 @@ class CRARLightning(pl.LightningModule):
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
         dataset = ExperienceDataset(
             self.replay_buffer,
-            self.hparams.episode_length * self.hparams.batch_size,
+            self.hparams.max_episode_length * self.hparams.batch_size,
             replace=self.hparams.replace,
         )
         dataloader = DataLoader(dataset=dataset, batch_size=self.hparams.batch_size)

@@ -4,16 +4,8 @@ import torch.nn as nn
 
 
 def compute_disambiguation(tensor1, tensor2, Cd=5.0):
-    # TODO: Use torch.norm to clean this
     return torch.exp(
-        -Cd
-        * torch.sqrt(
-            torch.clamp(
-                torch.sum(torch.pow(tensor1 - tensor2, 2), dim=1, keepdim=True,),
-                1e-6,
-                10,
-            )
-        )
+        -Cd * torch.clamp(torch.norm(tensor1 - tensor2, dim=1, keepdim=True), 1e-6, 3.2)
     ).sum()
 
 

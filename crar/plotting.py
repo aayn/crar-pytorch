@@ -46,7 +46,6 @@ def plot_maze_abstract_transitions(
     for i, (obs, *_) in enumerate(exp_seq):
         history.append(obs)
     history = np.array(history)
-    print(history.shape)
 
     abstract_states = model.agent.encode(history)
     m = cm.ScalarMappable(cmap=cm.jet)
@@ -182,7 +181,6 @@ def plot_simple_abstract_space(global_step, model, plot_dir):
     for i, (obs, *_) in enumerate(exp_seq):
         history.append(obs)
     history = np.array(history)
-    print(history.shape)
 
     abstract_states = model.agent.encode(history)
     m = cm.ScalarMappable(cmap=cm.jet)

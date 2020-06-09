@@ -84,13 +84,15 @@ def make_discount_predictor(abstract_dim, num_actions):
     return discount_predictor
 
 
-def make_encoder(input_shape, abstract_dim, device) -> Encoder:
+def make_encoder(
+    input_shape, abstract_dim, device, image_input: bool = False
+) -> Encoder:
     with open(HERE / "network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     encoder_config = config["encoder"]
 
     convs, feature_size = None, input_shape[0]
-    if encoder_config["convs"] is not None:
+    if encoder_config["convs"] is not None and image_input:
         convs = make_convs(input_shape, encoder_config["convs"])
         feature_size = compute_feature_size(input_shape, convs)
     fc = make_fc(feature_size, abstract_dim, encoder_config["fc"])
