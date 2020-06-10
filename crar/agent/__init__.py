@@ -59,8 +59,6 @@ class CRARAgent(nn.Module, AbstractAgent):
         self.double_learning = double_learning
         self.branching_factor = branching_factor
 
-        print(len(env.observation_space.shape) > 1)
-
         self.encoder = make_encoder(
             env.observation_space.shape,
             abstract_state_dim,
