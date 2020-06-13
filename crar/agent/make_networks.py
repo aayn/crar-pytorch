@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from .encoder import Encoder
-from .qnet import QNetwork
+from .qnet import QNetwork, DuelingQNetwork
 from .transition_predictor import TransitionPredictor
 from .scalar_predictor import ScalarPredictor
 from crar.utils import nonthrowing_issubclass
@@ -101,18 +101,30 @@ def make_encoder(
     return encoder
 
 
-def make_qnet(input_dim, num_actions, device) -> QNetwork:
+def make_qnet(input_dim, num_actions, device, is_dueling=False) -> QNetwork:
     with open(HERE / "network.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-    qnet_config = config["qnet"]
+    if is_dueling:
+        qnet_config = config["dueling-qnet"]
+    else:
+        qnet_config = config["qnet"]
 
     convs, feature_size = None, input_dim
     if qnet_config["convs"] is not None:
         convs = make_convs(input_dim, qnet_config["convs"])
         feature_size = compute_feature_size(input_dim, convs)
-    fc = make_fc(feature_size, num_actions, qnet_config["fc"])
 
-    qnet = QNetwork(input_dim, num_actions, convs, fc, device)
+    if is_dueling:
+        fc = make_fc(feature_size, None, qnet_config["fc"])
+        value = make_fc(None, None, qnet_config["val"])
+        advantage = make_fc(None, num_actions, qnet_config["adv"])
+        qnet = DuelingQNetwork(
+            input_dim, num_actions, convs, fc, value, advantage, device
+        )
+    else:
+        fc = make_fc(feature_size, num_actions, qnet_config["fc"])
+        qnet = QNetwork(input_dim, num_actions, convs, fc, device)
+
     return qnet
 
 

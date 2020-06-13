@@ -15,7 +15,10 @@ def main(hparams):
     model = CRARLightning(hparams)
 
     # logger = TensorBoardLogger(save_dir=os.getcwd(), name=hparams.logger_dir)
-    logger = WandbLogger(name=hparams.logger_dir.split("/")[1])
+    # logger = WandbLogger(name=hparams.logger_dir.split("/")[1])
+    logger = WandbLogger(
+        name="crar-maze-v1-new-priority-duel", project="crar-final-new_algos"
+    )
     logger.watch(model, log="all", log_freq=10)
 
     grad_clip_norm = 0
@@ -30,6 +33,7 @@ def main(hparams):
         early_stop_callback=False,
         gradient_clip_val=grad_clip_norm,
         benchmark=True,
+        max_steps=6000
         # auto_lr_find=True
         # val_check_interval=100,
         # log_gpu_memory="all",
@@ -45,10 +49,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--env", type=str, default="PongNoFrameskip-v4", help="gym environment tag"
+        "--env", type=str, default="CartPole-v0", help="gym environment tag"
     )
     args, _ = parser.parse_known_args()
     with open("config.yaml") as f:
         config = Box(yaml.load(f, Loader=yaml.FullLoader)[args.env])
-    for _ in range(10):
+    for _ in range(3):
         main(config)

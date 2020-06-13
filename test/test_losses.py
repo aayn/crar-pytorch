@@ -6,13 +6,13 @@ from crar.losses import compute_disambiguation
 class TestDisambiguation:
     def test_with_zero_1d(self):
         a, b = torch.tensor([[0.0]]), torch.tensor([[0.0]])
-        expected = torch.exp(-5.0 * torch.tensor([[1e-3]]))
+        expected = torch.exp(-5.0 * torch.tensor([[1e-6]]))
         actual = compute_disambiguation(a, b)
         assert torch.isclose(expected.float(), actual.float())
 
     def test_with_zero_2d(self):
         a, b = torch.tensor([[0.0, 0.0]]), torch.tensor([[0.0, 0.0]])
-        expected = torch.exp(-5.0 * torch.tensor([[1e-3]]))
+        expected = torch.exp(-5.0 * torch.tensor([[1e-6]]))
         actual = compute_disambiguation(a, b)
         assert torch.isclose(expected.float(), actual.float())
 
@@ -24,7 +24,7 @@ class TestDisambiguation:
 
     def test_large_value(self):
         a, b = torch.tensor([[0.0]]), torch.tensor([[100.0]])
-        expected = torch.exp(-5.0 * torch.tensor([[np.sqrt(10.0)]]))
+        expected = torch.exp(-5.0 * torch.tensor([[3.2]]))
         actual = compute_disambiguation(a, b)
         assert torch.isclose(expected.float(), actual.float())
 

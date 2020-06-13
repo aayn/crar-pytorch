@@ -50,14 +50,17 @@ class CRARAgent(nn.Module, AbstractAgent):
         discount_factor: float = 0.95,
         abstract_state_dim: int = 3,
         double_learning: bool = True,
+        dueling_qnet: bool = False,
         branching_factor: int = 2,
     ):
         super().__init__()
         self.device = device
+        self.replay_buffer = replay_buffer
         self.num_actions = env.action_space.n
         self.discount_factor = discount_factor
         self.double_learning = double_learning
         self.branching_factor = branching_factor
+        self.dueling_qnet = dueling_qnet
 
         self.encoder = make_encoder(
             env.observation_space.shape,
@@ -66,15 +69,22 @@ class CRARAgent(nn.Module, AbstractAgent):
             image_input=(len(env.observation_space.shape) > 1),
         )
 
-        self.current_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)
+        self.current_qnet = make_qnet(
+            abstract_state_dim, env.action_space.n, device, is_dueling=dueling_qnet
+        )
 
         self.encoder.to(self.device)
         self.current_qnet.to(self.device)
 
         if double_learning:
-            self.target_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)
+            self.target_qnet = make_qnet(
+                abstract_state_dim, env.action_space.n, device, is_dueling=dueling_qnet
+            )
             self.target_encoder = make_encoder(
-                env.observation_space.shape, abstract_state_dim, device
+                env.observation_space.shape,
+                abstract_state_dim,
+                device,
+                image_input=(len(env.observation_space.shape) > 1),
             )
             self.target_qnet.to(self.device)
             self.target_encoder.to(self.device)

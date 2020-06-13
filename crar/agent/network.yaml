@@ -1,13 +1,22 @@
 act: &act Tanh
 none: !!python/none &none None
 
-my-convs: &my-convs
-  - [Conv2d, auto, 32, { kernel_size: 2 }]
+# my-convs: &my-convs
+#   - [Conv2d, auto, 32, { kernel_size: 2 }]
+#   - *act
+#   - [Conv2d, 32, 64, { kernel_size: 2 }]
+#   - *act
+#   - [Conv2d, 64, 64, { kernel_size: 3 }]
+#   - *act
+
+# simple-q-fc: &simple-q-fc
+#   - [Linear, auto, 128]
+#   - *act
+#   - [Linear, 128, auto]
+
+linear-pass-through: &linear-pass-through
   - *act
-  - [Conv2d, 32, 64, { kernel_size: 2 }]
-  - *act
-  - [Conv2d, 64, 64, { kernel_size: 3 }]
-  - *act
+  - [Linear, auto, auto]
 
 crar-convs: &crar-convs
   - [Conv2d, auto, 8, { kernel_size: 2 }]
@@ -29,11 +38,6 @@ crar-fc: &crar-fc
   - [Linear, 50, 10]
   - *act
   - [Linear, 10, auto]
-
-simple-q-fc: &simple-q-fc
-  - [Linear, auto, 128]
-  - *act
-  - [Linear, 128, auto]
 
 crar-q-fc: &crar-q-fc
   - [Linear, auto, 50]
@@ -62,17 +66,35 @@ crar-float-fc: &crar-float-fc
   - *act
   - [Linear, 20, 1]
 
-linear-pass-through: &linear-pass-through
-  - *act
-  - [Linear, auto, auto]
+# encoder:
+#   convs: *crar-convs
+#   fc: *crar-fc
 
 encoder:
-  convs: *crar-convs
-  fc: *simple-q-fc
+  convs:
+    - [Conv2d, auto, 32, { kernel_size: 8, stride: 4 }]
+    - ReLU
+    - [Conv2d, 32, 64, { kernel_size: 4, stride: 2 }]
+    - ReLU
+    - [Conv2d, 64, 64, { kernel_size: 3 }]
+    - ReLU
+  fc:
+    - [Linear, auto, 128]
+    - ReLU
+    - [Linear, 128, auto]
 
 qnet:
   convs: *none
-  fc: *linear-pass-through
+  fc: *crar-q-fc
+
+dueling-qnet:
+  convs: *none
+  fc:
+    - ReLU
+    - [Linear, auto, 128]
+    - ReLU
+  val: [[Linear, 128, 1]]
+  adv: [[Linear, 128, auto]]
 
 trans-pred:
   fc: *crar-trans-pred-fc

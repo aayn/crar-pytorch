@@ -82,30 +82,34 @@ SimpleMaze-v0:
   plot_dir: /home/aayn/Programming/yarl/plots/test_refactor1
 
 SimpleMaze-v1:
-  env: SimpleMaze-v1
-  max_epochs: 500
+  env: SimpleMaze-v1 # OpenAI Gym env id
+  alg_name: Prioritized-Dueling-DDQN
+  max_epochs: 50000
   batch_size: 32
-  abstract_state_dim: 2
+  abstract_state_dim: 128
   lr: !!python/float 5e-4
-  lr_decay: 0.95
+  lr_decay: 1.0
   optimizer:
-    name: RMSprop
+    name: Adam
     params: { lr: !!python/float 5e-4 }
-    grad_clip_norm: 1.0
+    grad_clip_norm: 10.0
     # qnet_lr: !!python/float 5e-4
     # encoder_lr: !!python/float 5e-4
-  gamma: 0.99
-  sync_rate: 1000 # freeze interval
-  replay_size: 5000
-  warm_start_size: 5000
-  eps_last_frame: 10000
+  gamma: 0.95 # discount factor
+  sync_rate: 200 # freeze interval
+  replay_size: 10000 # replay memory size
+  warm_start_size: 2000
+  eps_last_frame: 2000
   eps_start: 1.0
-  eps_end: 0.01 # Random actions
-  max_episode_length: 500
+  eps_end: 0.01
+  max_episode_length: 1000
   max_episode_reward: 100
   planning_depth: 0
   is_atari: False
-  replace: True
-  update_experience: True
+  replace: True # whether to sample from experience with replacement
+  update_experience: True # whether to store new experience into replay buffer
+  prioritized_buffer: True # whether to use prioritized experience replay
+  prioritization_alpha: 0.7
+  prioritization_beta: 0.7
   logger_dir: lightning_dirs/simple_mazev1
   plot_dir: /home/aayn/Programming/yarl/plots/test_goal_plots18_planning2_interp

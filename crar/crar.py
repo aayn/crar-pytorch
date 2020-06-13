@@ -13,7 +13,13 @@ from torch.utils.data import DataLoader
 import numpy as np
 from box import Box
 from crar.agent import CRARAgent
-from crar.experience import ReplayBuffer, Experience, ExperienceDataset
+from crar.experience import (
+    UniformReplayBuffer,
+    PrioritizedReplayBuffer,
+    Experience,
+    ExperienceDataset,
+    TDExperience,
+)
 from crar.environments import wrap_deepmind, wrap_pytorch, make_atari, TimeLimit
 from crar.plotting import plot_maze_abstract_transitions, plot_simple_abstract_space
 from crar.utils import nonthrowing_issubclass, compute_eps
@@ -50,13 +56,24 @@ class CRARLightning(pl.LightningModule):
         self.optimizer = OPTIMIZERS[self.hparams.optimizer.name]
         self.reset()
         self.device = self.get_device()
-        self.replay_buffer = ReplayBuffer(self.hparams.replay_size)
+
+        if "prioritized_buffer" in self.hparams and self.hparams.prioritized_buffer:
+            self.replay_buffer = PrioritizedReplayBuffer(
+                self.hparams.replay_size,
+                sort_interval=64,
+                num_segments=self.hparams.batch_size,
+                prioritization_alpha=self.hparams.prioritization_alpha,
+            )
+        else:
+            self.hparams.prioritized_buffer = False
+            self.replay_buffer = UniformReplayBuffer(self.hparams.replay_size)
 
         self.agent = CRARAgent(
             self.env,
             self.replay_buffer,
             self.device,
             abstract_state_dim=self.hparams.abstract_state_dim,
+            dueling_qnet=True,
         )
 
         print(self.agent)
@@ -85,7 +102,10 @@ class CRARLightning(pl.LightningModule):
         )
         next_state, reward, done, _ = self.env.step(action)
         if store_experience:
-            exp = Experience(self.state, action, reward, done, next_state)
+            if self.hparams.prioritized_buffer:
+                exp = TDExperience([-1e5, self.state, action, reward, done, next_state])
+            else:
+                exp = Experience(self.state, action, reward, done, next_state)
             self.replay_buffer.push(exp)
             self.state = next_state
         if done:
@@ -101,14 +121,25 @@ class CRARLightning(pl.LightningModule):
         return self.agent.get_value(x)
 
     def training_step(self, batch, batch_number, optimizer_idx=None):
-        states, actions, rewards, dones, next_states = batch
-        encoded_batch = (
-            self.agent.encode(states),
-            actions,
-            rewards,
-            dones,
-            self.agent.encode(next_states),
-        )
+        if self.hparams.prioritized_buffer:
+            priorities, states, actions, rewards, dones, next_states = batch
+            encoded_batch = (
+                priorities,
+                self.agent.encode(states),
+                actions,
+                rewards,
+                dones,
+                self.agent.encode(next_states),
+            )
+        else:
+            states, actions, rewards, dones, next_states = batch
+            encoded_batch = (
+                self.agent.encode(states),
+                actions,
+                rewards,
+                dones,
+                self.agent.encode(next_states),
+            )
 
         # DQ optimizer
         if optimizer_idx == 0:
@@ -124,7 +155,20 @@ class CRARLightning(pl.LightningModule):
                 self.total_reward = self.episode_reward
                 self.episode_reward = 0
 
-            mf_loss = compute_mf_loss(self.agent, batch, self.hparams)
+            if self.hparams.prioritized_buffer:
+                mf_loss = (
+                    compute_mf_loss(
+                        self.agent, batch, self.hparams, mode="priority-dueling"
+                    )
+                    * 5.0
+                )
+            else:
+                mf_loss = (
+                    compute_mf_loss(
+                        self.agent, batch, self.hparams, mode="dueling-ddqn"
+                    )
+                    * 5.0
+                )
 
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 mf_loss = mf_loss.unsqueeze(0)
@@ -144,8 +188,11 @@ class CRARLightning(pl.LightningModule):
             )
 
         elif optimizer_idx == 1:
-            ld1_loss = compute_ld1_loss(
-                self.agent, self.replay_buffer, self.hparams, self.device
+            ld1_loss = (
+                compute_ld1_loss(
+                    self.agent, self.replay_buffer, self.hparams, self.device
+                )
+                * 0.2
             )
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 ld1_loss = ld1_loss.unsqueeze(0)
@@ -160,7 +207,7 @@ class CRARLightning(pl.LightningModule):
                 compute_ld2_loss(
                     self.agent, self.replay_buffer, self.hparams, self.device
                 )
-                * 0.0
+                * 0.2
             )
 
             if self.trainer.use_dp or self.trainer.use_ddp2:
@@ -172,7 +219,7 @@ class CRARLightning(pl.LightningModule):
             )
 
         elif optimizer_idx == 3:
-            ld1_prime_loss = compute_ld1_prime_loss(encoded_batch)
+            ld1_prime_loss = compute_ld1_prime_loss(encoded_batch, self.hparams) * 0.2
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 ld1_prime_loss = ld1_prime_loss.unsqueeze(0)
 
@@ -182,7 +229,9 @@ class CRARLightning(pl.LightningModule):
             )
 
         elif optimizer_idx == 4:
-            transition_loss = compute_trans_loss(self.agent, encoded_batch)
+            transition_loss = (
+                compute_trans_loss(self.agent, encoded_batch, self.hparams) * 0.2
+            )
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 transition_loss = transition_loss.unsqueeze(0)
 
@@ -211,7 +260,9 @@ class CRARLightning(pl.LightningModule):
             output = {"loss": interp_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
 
         elif optimizer_idx == 6:
-            reward_loss = compute_reward_loss(self.agent, encoded_batch)
+            reward_loss = (
+                compute_reward_loss(self.agent, encoded_batch, self.hparams) * 0.0
+            )
 
             if self.trainer.use_dp or self.trainer.use_ddp2:
                 reward_loss = reward_loss.unsqueeze(0)
@@ -223,7 +274,7 @@ class CRARLightning(pl.LightningModule):
 
     def on_epoch_end(self):
         try:
-            if re.match("SimpleMaze", self.env.id):
+            if re.match("SimpleMaze", self.env.id) and self.global_step % 800 == 0:
                 all_inputs = self.env.all_possible_inputs()
                 encoded_inputs = self.agent.encode(all_inputs)
                 plot_maze_abstract_transitions(
@@ -342,11 +393,20 @@ class CRARLightning(pl.LightningModule):
 
     def __dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
-        dataset = ExperienceDataset(
-            self.replay_buffer,
-            self.hparams.max_episode_length * self.hparams.batch_size,
-            replace=self.hparams.replace,
-        )
+        if self.hparams.prioritized_buffer:
+            dataset = ExperienceDataset(
+                self.replay_buffer,
+                self.hparams.batch_size,
+                replace=self.hparams.replace,
+                prioritized=self.hparams.prioritized_buffer,
+            )
+        else:
+            dataset = ExperienceDataset(
+                self.replay_buffer,
+                self.hparams.max_episode_length * self.hparams.batch_size,
+                replace=self.hparams.replace,
+                prioritized=self.hparams.prioritized_buffer,
+            )
         dataloader = DataLoader(dataset=dataset, batch_size=self.hparams.batch_size)
         return dataloader
 

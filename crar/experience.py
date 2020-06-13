@@ -192,14 +192,40 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
 
 class ExperienceDataset(IterableDataset):
-    def __init__(self, buffer: ReplayBuffer, sample_size: int = 128, replace=False):
+    def __init__(
+        self,
+        buffer: ReplayBuffer,
+        sample_size: int = 128,
+        replace=False,
+        prioritized=False,
+    ):
         self.buffer = buffer
         self.sample_size = sample_size
         self.replace = replace
+        self.prioritized = prioritized
 
     def __iter__(self) -> Tuple:
-        states, actions, rewards, dones, next_states = self.buffer.sample(
-            self.sample_size, self.replace
-        )
-        for i in range(len(dones)):
-            yield states[i], actions[i], rewards[i], dones[i], next_states[i]
+        if self.prioritized:
+            (
+                priorities,
+                states,
+                actions,
+                rewards,
+                dones,
+                next_states,
+            ) = self.buffer.sample(self.sample_size, self.replace)
+            for i in range(len(dones)):
+                yield (
+                    priorities[i],
+                    states[i],
+                    actions[i],
+                    rewards[i],
+                    dones[i],
+                    next_states[i],
+                )
+        else:
+            states, actions, rewards, dones, next_states = self.buffer.sample(
+                self.sample_size, self.replace
+            )
+            for i in range(len(dones)):
+                yield states[i], actions[i], rewards[i], dones[i], next_states[i]
