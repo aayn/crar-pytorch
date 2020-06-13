@@ -68,11 +68,11 @@ linear-pass-through: &linear-pass-through
 
 encoder:
   convs: *crar-convs
-  fc: *simple-q-fc
+  fc: *crar-fc
 
 qnet:
   convs: *none
-  fc: *linear-pass-through
+  fc: *crar-q-fc
 
 trans-pred:
   fc: *crar-trans-pred-fc

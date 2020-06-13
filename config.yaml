@@ -79,7 +79,7 @@ SimpleMaze-v0:
   replace: True
   update_experience: False
   logger_dir: lightning_dirs/simple_mazev0
-  plot_dir: /home/aayn/Programming/yarl/plots/test_refactor1
+  plot_dir: /home/aayn/Programming/yarl-two/plots/test_refactor1
 
 SimpleMaze-v1:
   env: SimpleMaze-v1

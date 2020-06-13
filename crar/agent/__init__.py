@@ -76,7 +76,7 @@ class CRARAgent(nn.Module, AbstractAgent):
         if double_learning:
             self.target_qnet = make_qnet(abstract_state_dim, env.action_space.n, device)
             self.target_encoder = make_encoder(
-                env.observation_space.shape, abstract_state_dim, device
+                env.observation_space.shape, abstract_state_dim, device, image_input=(len(env.observation_space.shape) > 1)
             )
             self.target_qnet.to(self.device)
             self.target_encoder.to(self.device)
