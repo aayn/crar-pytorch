@@ -24,7 +24,7 @@ CartPole-v0:
   replace: True
   update_experience: True
   logger_dir: lightning_dirs/cartpole
-  plot_dir: /home/aayn/Programming/yarl/plots/cartpole
+  plot_dir: /home/aayn/Programming/crar-pytorch/plots/cartpole
 
 PongNoFrameskip-v4:
   env: PongNoFrameskip-v4
@@ -79,7 +79,7 @@ SimpleMaze-v0:
   replace: True
   update_experience: False
   logger_dir: lightning_dirs/simple_mazev0
-  plot_dir: /home/aayn/Programming/yarl-two/plots/test_refactor1
+  plot_dir: /home/aayn/Programming/crar-pytorch/plots/simple_maze_v0
 
 SimpleMaze-v1:
   env: SimpleMaze-v1
@@ -108,4 +108,4 @@ SimpleMaze-v1:
   replace: True
   update_experience: True
   logger_dir: lightning_dirs/simple_mazev1
-  plot_dir: /home/aayn/Programming/yarl/plots/test_goal_plots18_planning2_interp
+  plot_dir: /home/aayn/Programming/crar-pytorch/plots/simple_maze_v1

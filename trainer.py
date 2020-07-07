@@ -11,7 +11,6 @@ from pytorch_lightning.loggers import WandbLogger
 
 
 def main(hparams):
-    # TODO: Check that all view, reshape, transpose are used correctly
     model = CRARLightning(hparams)
 
     # logger = TensorBoardLogger(save_dir=os.getcwd(), name=hparams.logger_dir)
@@ -45,10 +44,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--env", type=str, default="PongNoFrameskip-v4", help="gym environment tag"
+        "--env", type=str, default="SimpleMaze-v1", help="gym environment tag"
     )
     args, _ = parser.parse_known_args()
     with open("config.yaml") as f:
         config = Box(yaml.load(f, Loader=yaml.FullLoader)[args.env])
-    # for _ in range(10):
+    
     main(config)
