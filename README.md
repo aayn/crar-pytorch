@@ -12,4 +12,10 @@ Finally, run `python setup.py install` while at the root of this repository.
 
 ## Reproducing Labyrinth plot
 
-To reproduce the labyrinth abstract representation plots, change the `plot_dir` under `SimpleMaze-v0` in `config.yaml` to a desired path. Then run `python trainer.py --env SimpleMaze-v0`.
+To reproduce the labyrinth abstract representation plots, change the `plot_dir` under `SimpleMaze-v0` in `config.yaml` to a desired path. Then run `python trainer.py --env SimpleMaze-v0`. Here's my result for the labyrinth plot with the interpretation loss:
+
+
+
+![My result](plots/simple_maze_v0/my_plot_wo_interp.pdf)
+
+![Original result](simple_maze_v0/crarrepnointerp.png)
