@@ -139,6 +139,7 @@ wandb/
 *_lightning/
 
 *.ckpt
+*.pdf
 
 yarl-algorithms_crar
 crar/saved_weights
