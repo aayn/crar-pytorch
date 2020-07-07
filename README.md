@@ -12,10 +12,25 @@ Finally, run `python setup.py install` while at the root of this repository.
 
 ## Reproducing Labyrinth plot
 
-To reproduce the labyrinth abstract representation plots, change the `plot_dir` under `SimpleMaze-v0` in `config.yaml` to a desired path. Then run `python trainer.py --env SimpleMaze-v0`. Here's my result for the labyrinth plot with the interpretation loss:
+To reproduce the labyrinth abstract representation plots, change the `plot_dir` under `SimpleMaze-v0` in `config.yaml` to a desired path. Then run `python trainer.py --env SimpleMaze-v0`. Following are my results for the labyrinth plot.
+
+For the agent without the interpration loss, the original result:
+
+![Original result](plots/simple_maze_v0/crarrepnointerp.png)
+
+And my result:
+
+![My result](plots/simple_maze_v0/my_plot_wo_interp.png)
 
 
+>  Note that there is nothing enforcing what the orientation of the encoding should be. Consequently, it’s possible to end up with different orientations of the labyrinth on different runs of the algorithm (even different figures in the original paper have different orientations).
 
-![My result](plots/simple_maze_v0/my_plot_wo_interp.pdf)
+For the agent with the interpretation loss, the original result:
 
-![Original result](simple_maze_v0/crarrepnointerp.png)
+![Original result](plots/simple_maze_v0/crarrepinterp.png)
+
+And my result:
+
+![My result](plots/simple_maze_v0/my_plot_with_interp.png)
+
+> The alignment vector I chose was <a href="https://www.codecogs.com/eqnedit.php?latex=\inline&space;[-1&space;\&space;0]^T" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\inline&space;[-1&space;\&space;0]^T" title="[-1 \ 0]^T" /></a> and the one in the original paper was <a href="https://www.codecogs.com/eqnedit.php?latex=\inline&space;[1&space;\&space;0]^T" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\inline&space;[1&space;\&space;0]^T" title="[1 \ 0]^T" /></a>. Thus, my representation is a mirror image of the one from the original paper.
