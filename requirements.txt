@@ -1,4 +1,4 @@
 torch>=1.4.0
 torchvision
-pytorch-lightning==0.7.5
+pytorch-lightning==2.4.0
 numpy>=1.18
